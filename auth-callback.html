@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>EmailChainGuard · Login</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <script>
+    // Questa pagina gestisce il redirect OAuth di MSAL.
+    // MSAL la carica in un iframe nascosto e completa l'autenticazione.
+    if (window.msal) {
+      const msalInstance = new msal.PublicClientApplication({
+        auth: { clientId: window.opener?.AZURE_CLIENT_ID || '' }
+      });
+      msalInstance.handleRedirectPromise().catch(console.error);
+    }
+  </script>
+</body>
+</html>

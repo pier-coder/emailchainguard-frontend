@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EmailChainGuard</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <!-- MSAL per autenticazione Microsoft -->
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Variables ───────────────────────────────────────── */
+    :root {
+      --bg:          #09090b;
+      --surface:     #111113;
+      --surface2:    #18181b;
+      --border:      #27272a;
+      --border2:     #3f3f46;
+      --text:        #fafafa;
+      --muted:       #71717a;
+      --accent:      #60a5fa;
+      --ok:          #4ade80;
+      --ok-dim:      #052e16;
+      --ok-border:   #166534;
+      --warn:        #fbbf24;
+      --warn-dim:    #1c1408;
+      --warn-border: #78350f;
+      --danger:      #f87171;
+      --danger-dim:  #1c0808;
+      --danger-border:#7f1d1d;
+      --mono:        'IBM Plex Mono', monospace;
+      --sans:        'IBM Plex Sans', sans-serif;
+      --radius:      6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.5; overflow-x: hidden; }
+
+    /* ── Scrollbar ───────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 13px;
+      display: flex; align-items: center; gap: 9px;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .logo { display: flex; align-items: center; gap: 7px; flex: 1; }
+    .logo-shield {
+      width: 26px; height: 26px;
+      background: linear-gradient(135deg,#1e3a5c,#0c1f35);
+      border: 1px solid #1d4ed8;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+    .logo-name { font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: .1em; text-transform: uppercase; }
+    .logo-ver  { font-size: 9px; color: var(--muted); }
+
+    .header-actions { display: flex; gap: 6px; align-items: center; }
+
+    /* Auth badge */
+    #auth-badge {
+      display: flex; align-items: center; gap: 4px;
+      font-family: var(--mono); font-size: 9px; font-weight: 600;
+      padding: 3px 7px; border-radius: 4px; cursor: pointer;
+      transition: all .15s; border: 1px solid transparent;
+    }
+    #auth-badge.logged-out { background: #1a2a3a; border-color: #1d4ed8; color: var(--accent); }
+    #auth-badge.logged-in  { background: var(--ok-dim); border-color: var(--ok-border); color: var(--ok); cursor: default; }
+    #auth-badge:hover { opacity: .8; }
+
+    #btn-scan {
+      background: var(--accent); color: #000; border: none;
+      border-radius: 4px; padding: 4px 10px;
+      font-family: var(--mono); font-size: 10px; font-weight: 700;
+      cursor: pointer; letter-spacing: .05em;
+      transition: opacity .15s, transform .1s;
+    }
+    #btn-scan:hover   { opacity: .85; }
+    #btn-scan:active  { transform: scale(.97); }
+    #btn-scan:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ── Main ────────────────────────────────────────────── */
+    main { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── Overall status ──────────────────────────────────── */
+    #overall-status {
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      display: flex; align-items: flex-start; gap: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: all .3s;
+    }
+    #overall-status.ok     { background: var(--ok-dim);   border-color: var(--ok-border); }
+    #overall-status.warning{ background: var(--warn-dim);  border-color: var(--warn-border); }
+    #overall-status.danger { background: var(--danger-dim);border-color: var(--danger-border); }
+
+    .st-icon  { font-size: 17px; flex-shrink: 0; line-height: 1; margin-top: 1px; }
+    .st-body  { flex: 1; }
+    .st-title { font-weight: 600; font-size: 12px; }
+    .st-sub   { font-size: 10px; margin-top: 1px; opacity: .8; }
+
+    /* ── Scan bar ────────────────────────────────────────── */
+    .scan-bar { height: 2px; border-radius: 1px; overflow: hidden; display: none; margin-top: -6px; }
+    .scan-bar.active { display: block; background: #1a2a3a; }
+    @keyframes sweep { 0%{transform:translateX(-100%)} 100%{transform:translateX(300%)} }
+    .scan-bar::after { content:''; display:block; width:30%; height:100%; background:var(--accent); animation:sweep 1.4s ease-in-out infinite; }
+
+    /* ── Graph badge ─────────────────────────────────────── */
+    #graph-badge {
+      display: none; align-items: center; gap: 5px;
+      font-size: 10px; color: var(--accent);
+      background: #0c1f35; border: 1px solid #1e3a5c;
+      border-radius: 4px; padding: 5px 9px;
+    }
+    #graph-badge.visible { display: flex; }
+    #graph-badge .gb-dot { width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Section label ───────────────────────────────────── */
+    .slabel {
+      font-family: var(--mono); font-size: 9px; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+    }
+    .slabel::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Risk gauge ──────────────────────────────────────── */
+    #risk-gauge-section { display: none; }
+    #risk-gauge-section.visible { display: block; }
+
+    .gauge-wrap { display: flex; align-items: center; gap: 10px; }
+    .gauge-bar-bg {
+      flex: 1; height: 6px; background: var(--border2);
+      border-radius: 3px; overflow: hidden;
+    }
+    .gauge-bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width .6s cubic-bezier(.22,1,.36,1);
+    }
+    .gauge-score { font-family: var(--mono); font-size: 14px; font-weight: 700; min-width: 36px; text-align: right; }
+    .gauge-label { font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+
+    /* ── Domain cards ────────────────────────────────────── */
+    #domain-list { display: flex; flex-direction: column; gap: 7px; }
+    #domains-section { display: none; }
+    #domains-section.visible { display: block; }
+
+    .dcard {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      animation: fadeUp .25s ease forwards;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+    .dcard.suspect { border-color: var(--danger-border); background: #120808; }
+    .dcard.warning-card { border-color: var(--warn-border); background: #120e04; }
+
+    .dcard-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; cursor: pointer;
+      transition: background .15s;
+    }
+    .dcard-header:hover { background: rgba(255,255,255,.03); }
+
+    .dc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .safe    .dc-dot { background: var(--ok);     box-shadow: 0 0 5px var(--ok); }
+    .suspect .dc-dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); animation: pulse 1.5s ease-in-out infinite; }
+    .warning-card .dc-dot { background: var(--warn); box-shadow: 0 0 5px var(--warn); }
+
+    .dc-main { flex: 1; min-width: 0; }
+    .dc-domain {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .safe .dc-domain { color: var(--text); }
+    .suspect .dc-domain { color: var(--danger); }
+    .warning-card .dc-domain { color: var(--warn); }
+
+    .dc-emails { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .dc-right { display: flex; align-items: center; gap: 6px; }
+    .dc-score {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      min-width: 28px; text-align: right;
+    }
+    .dc-badge {
+      font-family: var(--mono); font-size: 9px; font-weight: 700;
+      letter-spacing: .06em; padding: 2px 5px; border-radius: 3px; flex-shrink: 0;
+    }
+    .safe .dc-badge        { background: var(--ok-dim);    color: var(--ok);    border: 1px solid var(--ok-border); }
+    .suspect .dc-badge     { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger-border); }
+    .warning-card .dc-badge{ background: var(--warn-dim);  color: var(--warn);   border: 1px solid var(--warn-border); }
+
+    .dc-chevron { color: var(--muted); font-size: 10px; transition: transform .2s; }
+    .dcard.open .dc-chevron { transform: rotate(180deg); }
+
+    /* ── Card detail panel ───────────────────────────────── */
+    .dcard-detail {
+      max-height: 0; overflow: hidden;
+      transition: max-height .35s cubic-bezier(.22,1,.36,1);
+      border-top: 0px solid var(--border);
+    }
+    .dcard.open .dcard-detail {
+      max-height: 600px;
+      border-top-width: 1px;
+    }
+    .dcard-detail-inner { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── Detail rows ─────────────────────────────────────── */
+    .detail-block { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; }
+    .detail-block-title { font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .detail-row { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; font-size: 11px; }
+    .detail-row + .detail-row { border-top: 1px solid var(--border); }
+    .detail-key { color: var(--muted); min-width: 64px; font-family: var(--mono); font-size: 9px; text-transform: uppercase; flex-shrink: 0; }
+    .detail-val { color: var(--text); word-break: break-all; }
+    .detail-val.ok     { color: var(--ok); }
+    .detail-val.danger { color: var(--danger); }
+    .detail-val.warn   { color: var(--warn); }
+
+    /* ── Diff block ──────────────────────────────────────── */
+    .diff-block {
+      background: var(--danger-dim); border: 1px solid var(--danger-border);
+      border-radius: 4px; padding: 8px 10px;
+    }
+    .diff-block-title { font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--danger); margin-bottom: 7px; }
+    .diff-row-pair { display: flex; flex-direction: column; gap: 3px; }
+    .diff-line { display: flex; align-items: center; gap: 6px; padding: 4px 7px; border-radius: 3px; font-family: var(--mono); font-size: 11px; }
+    .diff-line.legit { background: var(--ok-dim); border: 1px solid var(--ok-border); }
+    .diff-line.fake  { background: #1f0a0a; border: 1px solid var(--danger-border); }
+    .diff-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; min-width: 30px; flex-shrink: 0; }
+    .diff-line.legit .diff-lbl { color: var(--ok); }
+    .diff-line.fake  .diff-lbl { color: var(--danger); }
+    .diff-chars { letter-spacing: .03em; }
+    .diff-line.legit .diff-chars { color: var(--ok); }
+    .diff-line.fake  .diff-chars { color: var(--text); }
+    .diff-chars .ch  { color: var(--danger); font-weight: 700; text-decoration: underline; text-decoration-color: var(--danger); }
+
+    /* ── Advice ──────────────────────────────────────────── */
+    .advice {
+      background: #0a1628; border: 1px solid #1e3a5c;
+      border-radius: var(--radius); padding: 9px 11px;
+      font-size: 11px; color: #93c5fd; line-height: 1.65;
+      display: none;
+    }
+    .advice.visible { display: block; }
+    .advice strong { color: var(--accent); }
+
+    /* ── Risk score bar color ────────────────────────────── */
+    .fill-ok      { background: var(--ok); }
+    .fill-warning { background: var(--warn); }
+    .fill-danger  { background: var(--danger); }
+
+    /* ── Empty state ─────────────────────────────────────── */
+    #empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:40px 20px; text-align:center; color:var(--muted); }
+    #empty-state .es-icon { font-size:34px; opacity:.3; }
+    #empty-state p { font-size:11px; max-width:170px; line-height:1.7; }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    footer { border-top:1px solid var(--border); padding:6px 13px; font-family:var(--mono); font-size:9px; color:var(--muted); display:flex; justify-content:space-between; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-shield">🔐</div>
+      <div>
+        <div class="logo-name">EmailChainGuard</div>
+        <div class="logo-ver">v2.0 · Graph + WHOIS + DNS + Reputation</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div id="auth-badge" class="logged-out" onclick="handleAuth()">
+        <span>⚡</span><span id="auth-label">CONNETTI</span>
+      </div>
+      <button id="btn-scan" onclick="runScan()">▶ SCANSIONA</button>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <div id="overall-status">
+      <div class="st-icon" id="st-icon">◌</div>
+      <div class="st-body">
+        <div class="st-title" id="st-title">Pronto</div>
+        <div class="st-sub"   id="st-sub">Apri un'email e premi Scansiona</div>
+      </div>
+    </div>
+    <div class="scan-bar" id="scan-bar"></div>
+
+    <div id="graph-badge">
+      <div class="gb-dot"></div>
+      <span id="graph-badge-text">Lettura conversazione via Microsoft Graph…</span>
+    </div>
+
+    <!-- Risk gauge -->
+    <div id="risk-gauge-section">
+      <div class="slabel">Rischio complessivo</div>
+      <div class="gauge-wrap">
+        <div class="gauge-bar-bg">
+          <div class="gauge-bar-fill" id="gauge-fill" style="width:0%"></div>
+        </div>
+        <div class="gauge-score" id="gauge-score">0</div>
+        <div class="gauge-label" id="gauge-label">—</div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state">
+      <div class="es-icon">📭</div>
+      <p>Apri un'email per analizzare tutta la catena dei mittenti</p>
+    </div>
+
+    <!-- Domains -->
+    <div id="domains-section">
+      <div class="slabel">Domini rilevati</div>
+      <div id="domain-list"></div>
+    </div>
+
+    <!-- Prima volta -->
+    <div class="first-time-box" id="first-time-box">
+      <div class="ft-header">
+        <span class="ft-icon">👋</span>
+        <div>
+          <div>Prima volta che ricevi email da:</div>
+          <div class="ft-sub">Verifica l'identità prima di condividere informazioni sensibili</div>
+        </div>
+      </div>
+      <div id="first-time-list"></div>
+    </div>
+
+    <!-- Advice -->
+    <div class="advice" id="advice">
+      <strong>Come procedere:</strong><br>
+      Non rispondere ancora. Contatta il tuo interlocutore tramite
+      un canale diverso (telefono o una nuova email da zero) per
+      verificare se il messaggio è suo. Non cliccare link né aprire
+      allegati finché non hai la conferma.
+    </div>
+
+  </main>
+
+  <footer>
+    <span id="footer-info">EmailChainGuard</span>
+    <span id="footer-addr">—</span>
+  </footer>
+
+</div>
+<script src="taskpane.js"></script>
+</body>
+</html>
