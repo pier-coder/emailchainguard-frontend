@@ -8,32 +8,45 @@
 // In locale, AZURE_CLIENT_ID va inserito anche nel manifest.xml
 const CONFIG = {
   AZURE_CLIENT_ID: window.AZURE_CLIENT_ID || 'IL-TUO-CLIENT-ID-QUI',
-  BACKEND_URL:     window.BACKEND_URL     || 'http://localhost:8000',
+  BACKEND_URL:     window.BACKEND_URL     || 'https://emailchainguard-backend-production.up.railway.app',
   SCOPES:          ['Mail.Read', 'User.Read'],
 };
 
-// ── Memoria domini (roamingSettings) ────────────────────────────
-// I dati vengono salvati nel tenant Exchange dell'utente.
-// Nessun dato sensibile esce dalla casella dell'utente.
+// ── Memoria domini ───────────────────────────────────────────────
+// Prova roamingSettings (Exchange/M365), altrimenti sessionStorage.
+// In entrambi i casi i dati restano sul dispositivo dell'utente.
+
+const ECG_KEY = 'ecg_known_domains';
+
+function _roamingOk() {
+  try { return !!(Office && Office.context && Office.context.roamingSettings); }
+  catch { return false; }
+}
 
 function loadKnownDomains() {
   try {
-    const raw = Office.context.roamingSettings.get('ecg_known_domains');
+    let raw = null;
+    if (_roamingOk()) {
+      raw = Office.context.roamingSettings.get(ECG_KEY);
+    } else {
+      raw = sessionStorage.getItem(ECG_KEY);
+    }
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch { return new Set(); }
 }
 
-function saveKnownDomains(domains) {
+function saveKnownDomains(newDomains) {
   try {
     const existing = loadKnownDomains();
-    domains.forEach(d => existing.add(d));
-    Office.context.roamingSettings.set('ecg_known_domains', JSON.stringify(Array.from(existing)));
-    Office.context.roamingSettings.saveAsync(result => {
-      if (result.status !== Office.AsyncResultStatus.Succeeded) {
-        console.warn('ECG: roamingSettings save failed', result.error);
-      }
-    });
-  } catch (e) { console.warn('ECG: roamingSettings error', e); }
+    newDomains.forEach(d => existing.add(d));
+    const serialized = JSON.stringify(Array.from(existing));
+    if (_roamingOk()) {
+      Office.context.roamingSettings.set(ECG_KEY, serialized);
+      Office.context.roamingSettings.saveAsync(() => {});
+    } else {
+      sessionStorage.setItem(ECG_KEY, serialized);
+    }
+  } catch (e) { console.warn('ECG: storage error', e); }
 }
 
 // ── MSAL instance ────────────────────────────────────────────────
