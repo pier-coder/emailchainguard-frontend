@@ -9,7 +9,7 @@
 const CONFIG = {
   AZURE_CLIENT_ID: window.AZURE_CLIENT_ID || 'IL-TUO-CLIENT-ID-QUI',
   BACKEND_URL:     window.BACKEND_URL     || 'https://emailchainguard-backend-production.up.railway.app',
-  ECG_API_KEY:     window.ECG_API_KEY     || 'Columbus25_1',
+  ECG_API_KEY:     window.ECG_API_KEY     || 'ecg-dev-key-2024',
   SCOPES:          ['Mail.Read', 'User.Read'],
 };
 
@@ -307,7 +307,7 @@ function buildDomainCard(d, knownDomains) {
     <div class="dc-dot"></div>
     <div class="dc-main">
       <div class="dc-domain">@${esc(d.domain)}</div>
-      <div class="dc-emails">${d.emails.map(esc).join(' · ')}</div>
+      <div class="dc-emails">@${esc(d.domain)}</div>
     </div>
     <div class="dc-right">
       ${d.is_suspect ? `<div class="dc-score" style="color:${scoreColor}">${d.risk_score}</div>` : ''}
