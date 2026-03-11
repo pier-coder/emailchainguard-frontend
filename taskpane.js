@@ -9,7 +9,7 @@
 const CONFIG = {
   AZURE_CLIENT_ID: window.AZURE_CLIENT_ID || 'IL-TUO-CLIENT-ID-QUI',
   BACKEND_URL:     window.BACKEND_URL     || 'https://emailchainguard-backend-production.up.railway.app',
-  ECG_API_KEY:     window.ECG_API_KEY     || 'ecg-dev-key-2024',
+  ECG_API_KEY:     window.ECG_API_KEY     || 'Columbus25_1',
   SCOPES:          ['Mail.Read', 'User.Read'],
 };
 
