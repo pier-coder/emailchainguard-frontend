@@ -1,22 +1,23 @@
 /* ============================================================
-   EmailChainGuard v3 — taskpane.js
-   - Scansione automatica all'apertura email
-   - Primo contatto: confronto email completa (non dominio)
-   - Storage: roamingSettings (M365) + localStorage fallback
-   - Banner colorati per ogni stato
+   EmailChainGuard v3.1 — taskpane.js
+   Fix sicurezza:
+   - Validazione URL VirusTotal (blocca javascript:)
+   - Limite 1000 email in memoria
+   - Timeout fetch 15 secondi
+   - Validazione risposta backend
    ============================================================ */
 'use strict';
 
 const CONFIG = {
   BACKEND_URL: 'https://emailchainguard-backend-production.up.railway.app',
-  ECG_API_KEY: 'Columbus25_1', // <-- sostituisci con la tua chiave
+  ECG_API_KEY: 'ecg-dev-key-2024', // <-- sostituisci con la tua chiave
+  MAX_KNOWN_EMAILS: 1000,
+  FETCH_TIMEOUT_MS: 15000,
 };
 
 // ── Storage email conosciute ──────────────────────────────────────────
-// Salva email complete (mario@gmail.com) — non solo il dominio
-// Così mario@gmail.com e luigi@gmail.com restano distinti
 const STORAGE_KEY = 'ecg_known_emails_v3';
-const _memCache = new Set(); // fallback in-memory per la sessione
+const _memCache = new Set();
 
 function _roamingOk() {
   try { return !!(Office?.context?.roamingSettings); }
@@ -24,7 +25,6 @@ function _roamingOk() {
 }
 
 function loadKnownEmails() {
-  // 1. roamingSettings (M365 aziendale — persiste tra sessioni)
   if (_roamingOk()) {
     try {
       const raw = Office.context.roamingSettings.get(STORAGE_KEY);
@@ -33,14 +33,12 @@ function loadKnownEmails() {
       return stored;
     } catch { /* fallthrough */ }
   }
-  // 2. localStorage (browser — persiste tra sessioni su Edge/Chrome)
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const stored = raw ? new Set(JSON.parse(raw)) : new Set();
     _memCache.forEach(e => stored.add(e));
     return stored;
   } catch { /* fallthrough */ }
-  // 3. Solo memoria di sessione
   return new Set(_memCache);
 }
 
@@ -48,8 +46,14 @@ function saveKnownEmails(emails) {
   emails.forEach(e => _memCache.add(e));
   const all = loadKnownEmails();
   emails.forEach(e => all.add(e));
-  const serialized = JSON.stringify(Array.from(all));
 
+  // Limite massimo 1000 email — rimuove le più vecchie
+  let arr = Array.from(all);
+  if (arr.length > CONFIG.MAX_KNOWN_EMAILS) {
+    arr = arr.slice(arr.length - CONFIG.MAX_KNOWN_EMAILS);
+  }
+
+  const serialized = JSON.stringify(arr);
   if (_roamingOk()) {
     try {
       Office.context.roamingSettings.set(STORAGE_KEY, serialized);
@@ -94,22 +98,21 @@ async function runScan() {
   document.getElementById('idle-state').style.display = 'none';
 
   try {
-    // 1. Raccogli email completi dall'email corrente
     const localAddrs = collectAddresses(item);
-
-    // 2. Verifica primo contatto (email completa del mittente)
     const knownEmails = loadKnownEmails();
     const fromAddr = item.from?.emailAddress?.toLowerCase() || null;
     const isNewSender = fromAddr && !knownEmails.has(fromAddr);
 
-    // 3. Salva tutti i mittenti come conosciuti
     saveKnownEmails(localAddrs);
 
-    // 4. Manda solo domini al backend (GDPR)
     const domains = [...new Set(localAddrs.map(a => a.split('@')[1]).filter(Boolean))];
     const result = await callBackend(domains, item.conversationId || null);
 
-    // 5. Render
+    // Validazione risposta backend
+    if (!result || !Array.isArray(result.domains)) {
+      throw new Error('Risposta backend non valida');
+    }
+
     renderResults(result, isNewSender ? fromAddr : null);
 
   } catch (err) {
@@ -134,38 +137,50 @@ function collectAddresses(item) {
 
 // ── Backend ───────────────────────────────────────────────────────────
 async function callBackend(domains, conversationId) {
-  const resp = await fetch(`${CONFIG.BACKEND_URL}/analyze`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-ECG-Key': CONFIG.ECG_API_KEY,
-    },
-    body: JSON.stringify({ domains, conversation_id: conversationId }),
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.detail || `Errore backend HTTP ${resp.status}`);
+  // Timeout di 15 secondi
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CONFIG.FETCH_TIMEOUT_MS);
+
+  try {
+    const resp = await fetch(`${CONFIG.BACKEND_URL}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-ECG-Key': CONFIG.ECG_API_KEY,
+      },
+      body: JSON.stringify({ domains, conversation_id: conversationId }),
+      signal: controller.signal,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `Errore backend HTTP ${resp.status}`);
+    }
+    return resp.json();
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Analisi scaduta (timeout 15s) — riprova');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return resp.json();
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────
 function renderResults(data, newSenderEmail) {
-  const { overall_label, suspect_count, domains } = data;
+  const { overall_label, domains } = data;
 
-  // Status dot
   if (overall_label === 'danger')       setDot('danger');
   else if (overall_label === 'warning') setDot('warning');
   else if (newSenderEmail)              setDot('new');
   else                                  setDot('ok');
 
-  // Banner primo contatto
   if (newSenderEmail) {
     document.getElementById('banner-new-email').textContent = newSenderEmail;
     showBanner('banner-new');
   }
 
-  // Banner dominio sospetto
   if (overall_label === 'danger' || overall_label === 'warning') {
     const details = domains
       .filter(d => d.is_suspect)
@@ -176,7 +191,6 @@ function renderResults(data, newSenderEmail) {
     document.getElementById('advice').classList.add('visible');
   }
 
-  // Lista domini
   const list = document.getElementById('domain-list');
   list.innerHTML = '';
   domains.forEach((d, i) => {
@@ -210,7 +224,7 @@ function buildDomainCard(d) {
       <div class="dc-domain">@${esc(d.domain)}</div>
     </div>
     <div class="dc-right">
-      ${d.is_suspect ? `<div class="dc-score" style="color:${scoreColor}">${d.risk_score}</div>` : ''}
+      ${d.is_suspect ? `<div class="dc-score" style="color:${scoreColor}">${Number(d.risk_score) || 0}</div>` : ''}
       <div class="dc-badge">${badgeText}</div>
       ${d.is_suspect ? '<div class="dc-chevron">&#9660;</div>' : ''}
     </div>`;
@@ -245,7 +259,7 @@ function buildDetailHTML(d) {
     h += `<div class="detail-block">
       <div class="detail-block-title">WHOIS</div>
       <div class="detail-row"><span class="detail-key">Registrato</span><span class="detail-val ${ac}">${w.creation_date ? new Date(w.creation_date).toLocaleDateString('it-IT') : '—'}</span></div>
-      <div class="detail-row"><span class="detail-key">Eta</span><span class="detail-val ${ac}">${w.age_label}</span></div>
+      <div class="detail-row"><span class="detail-key">Eta</span><span class="detail-val ${ac}">${esc(w.age_label || '—')}</span></div>
       <div class="detail-row"><span class="detail-key">Registrar</span><span class="detail-val">${esc(w.registrar || '—')}</span></div>
     </div>`;
   }
@@ -262,17 +276,30 @@ function buildDetailHTML(d) {
 
   if (d.reputation) {
     const rep = d.reputation;
-    const vtc = rep.vt_malicious > 0 ? 'danger' : rep.vt_suspicious > 0 ? 'warn' : 'ok';
+    const vtMal = Number(rep.vt_malicious) || 0;
+    const vtSus = Number(rep.vt_suspicious) || 0;
+    const vtc = vtMal > 0 ? 'danger' : vtSus > 0 ? 'warn' : 'ok';
+
     h += `<div class="detail-block"><div class="detail-block-title">Reputazione</div>`;
+
     if (rep.vt_available) {
-      h += `<div class="detail-row"><span class="detail-key">VirusTotal</span><span class="detail-val ${vtc}">${rep.vt_malicious} malevoli · ${rep.vt_suspicious} sospetti</span></div>`;
-      if (rep.vt_link) h += `<div class="detail-row"><span class="detail-key">Report</span><span class="detail-val"><a href="${rep.vt_link}" target="_blank" style="color:var(--accent)">Apri VirusTotal</a></span></div>`;
+      h += `<div class="detail-row"><span class="detail-key">VirusTotal</span><span class="detail-val ${vtc}">${vtMal} malevoli · ${vtSus} sospetti</span></div>`;
+
+      // Validazione URL VirusTotal — blocca qualsiasi cosa non sia https://www.virustotal.com
+      if (rep.vt_link && String(rep.vt_link).startsWith('https://www.virustotal.com/')) {
+        h += `<div class="detail-row"><span class="detail-key">Report</span><span class="detail-val"><a href="${esc(rep.vt_link)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Apri VirusTotal</a></span></div>`;
+      }
     } else {
       h += `<div class="detail-row"><span class="detail-key">VirusTotal</span><span class="detail-val" style="color:var(--muted)">API key non configurata</span></div>`;
     }
+
     if (rep.gsb_available) {
-      h += `<div class="detail-row"><span class="detail-key">Google SB</span><span class="detail-val ${rep.gsb_threats.length ? 'danger' : 'ok'}">${rep.gsb_threats.length ? rep.gsb_threats.join(', ') : 'Non segnalato'}</span></div>`;
+      const threats = Array.isArray(rep.gsb_threats)
+        ? rep.gsb_threats.map(t => esc(String(t))).join(', ')
+        : 'Non segnalato';
+      h += `<div class="detail-row"><span class="detail-key">Google SB</span><span class="detail-val ${rep.gsb_threats?.length ? 'danger' : 'ok'}">${rep.gsb_threats?.length ? threats : 'Non segnalato'}</span></div>`;
     }
+
     h += '</div>';
   }
 
