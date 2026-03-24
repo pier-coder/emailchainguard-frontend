@@ -9,7 +9,7 @@
 
 const CONFIG = {
   BACKEND_URL: 'https://emailchainguard-backend-production.up.railway.app',
-  ECG_API_KEY: 'ecg-dev-key-2024', // <-- sostituisci con la tua chiave
+  ECG_API_KEY: 'MalibuStacy25_5', // <-- sostituisci con la tua chiave
   MAX_KNOWN_EMAILS: 1000,
   MAX_CONVERSATIONS: 200,
   FETCH_TIMEOUT_MS: 15000,
