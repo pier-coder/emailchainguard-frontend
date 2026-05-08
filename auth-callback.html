@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>EmailChainGuard - Authentication</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+body{background:#0a0e14;color:#e6edf3;font-family:sans-serif;padding:30px;text-align:center;margin:0}
+.spinner{width:32px;height:32px;border:3px solid #1f2733;border-top-color:#2f81f7;border-radius:50%;margin:12px auto;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+h2{font-size:14px;margin:0 0 6px;color:#e6edf3}
+p{font-size:11px;color:#7d8590;margin:0}
+</style>
+</head>
+<body>
+<div class="spinner"></div>
+<h2>Autenticazione in corso</h2>
+<p id="msg">Completamento dell'accesso a Microsoft 365...</p>
+<script>
+(function() {
+  // Estrai parametri dal fragment (#) o query (?) — MSAL usa fragment per implicit/PKCE
+  function getParams() {
+    const out = {};
+    const parse = (s) => {
+      if (!s) return;
+      s.replace(/^[?#]/, '').split('&').forEach(kv => {
+        const [k, v] = kv.split('=');
+        if (k) out[decodeURIComponent(k)] = decodeURIComponent(v || '');
+      });
+    };
+    parse(window.location.hash);
+    parse(window.location.search);
+    return out;
+  }
+  const params = getParams();
+  const payload = JSON.stringify(params);
+
+  function done(msg) {
+    document.getElementById('msg').textContent = msg;
+  }
+
+  // 1. Office.context.ui.messageParent — funziona quando aperto come Office dialog
+  Office.onReady(function() {
+    try {
+      if (Office.context && Office.context.ui && Office.context.ui.messageParent) {
+        Office.context.ui.messageParent(payload);
+        done('Autenticazione completata. Puoi chiudere questa finestra.');
+        return;
+      }
+    } catch (e) { /* non in dialog */ }
+
+    // 2. window.opener — funziona se aperta da loginPopup MSAL
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ ecgAuth: true, params: params }, window.location.origin);
+      }
+    } catch (e) {}
+
+    setTimeout(() => { try { window.close(); } catch (e) {} }, 800);
+    done('Autenticazione completata. Puoi chiudere questa finestra.');
+  });
+})();
+</script>
+</body></html>

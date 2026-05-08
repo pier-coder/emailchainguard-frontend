@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EmailChainGuard</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0e14; --surface:#11161e; --surface2:#161c26;
+      --border:#1f2733; --border2:#2d3748;
+      --text:#e6edf3; --muted:#7d8590; --muted2:#4a5462;
+      --accent:#2f81f7; --accent2:#58a6ff;
+      --ok:#3fb950; --ok-dim:#0d3219;
+      --warn:#d29922; --warn-dim:#1c1505;
+      --danger:#f85149; --danger-dim:#2a0a0a; --danger-border:#5c1a1a;
+      --blue:#388bfd; --blue-dim:#0c1a2e; --blue-border:#1f3a5f;
+      --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif;
+      --radius:10px; --radius-sm:6px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+    button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+    a{color:var(--accent2);text-decoration:none}
+
+    #app{display:flex;flex-direction:column;min-height:100vh}
+
+    /* ── Header ── */
+    header{background:linear-gradient(180deg,#0d1421 0%,#0a0e14 100%);border-bottom:1px solid var(--border);padding:11px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20}
+    .logo{display:flex;align-items:center;gap:9px;flex:1}
+    .logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#2f81f7 0%,#1f6feb 100%);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,.05),0 4px 12px rgba(47,129,247,.25)}
+    .logo-icon svg{width:15px;height:15px;fill:#fff}
+    .logo-text{display:flex;flex-direction:column;line-height:1.1}
+    .logo-name{font-size:13px;font-weight:600;color:#fff;letter-spacing:-.01em}
+    .logo-tag{font-size:9px;color:var(--muted);font-family:var(--mono);letter-spacing:.05em}
+    .header-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--muted);border-radius:6px;transition:all .15s}
+    .header-btn:hover{background:var(--surface2);color:var(--text)}
+    .header-btn svg{width:15px;height:15px;fill:currentColor}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);transition:background .3s}
+    .status-dot.scanning{background:var(--accent);animation:pulse 1.2s ease-in-out infinite}
+    .status-dot.new{background:var(--blue)}
+    .status-dot.warning{background:var(--warn)}
+    .status-dot.danger{background:var(--danger)}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    .scan-bar{height:2px;overflow:hidden;display:none;background:var(--surface)}
+    .scan-bar.active{display:block}
+    @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+    .scan-bar::after{content:'';display:block;width:25%;height:100%;background:var(--accent);animation:sweep 1.4s ease-in-out infinite}
+
+    main{flex:1;display:flex;flex-direction:column}
+
+    /* ── Welcome screen ── */
+    #welcome{display:none;flex:1;flex-direction:column;padding:24px 20px;gap:16px;animation:fadeIn .3s ease}
+    #welcome.visible{display:flex}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .welcome-hero{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:8px 0 16px}
+    .welcome-icon{width:56px;height:56px;background:linear-gradient(135deg,#2f81f7 0%,#1f6feb 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(47,129,247,.3)}
+    .welcome-icon svg{width:28px;height:28px;fill:#fff}
+    .welcome-title{font-size:18px;font-weight:600;color:#fff;letter-spacing:-.02em}
+    .welcome-subtitle{font-size:12px;color:var(--muted);max-width:240px;line-height:1.55}
+    .welcome-features{display:flex;flex-direction:column;gap:10px;margin:6px 0}
+    .feat{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+    .feat-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .feat-icon.blue{background:var(--blue-dim);color:var(--blue)}
+    .feat-icon.danger{background:var(--danger-dim);color:var(--danger)}
+    .feat-icon.warn{background:var(--warn-dim);color:var(--warn)}
+    .feat-icon svg{width:13px;height:13px;fill:currentColor}
+    .feat-body{flex:1}
+    .feat-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px}
+    .feat-desc{font-size:10px;color:var(--muted);line-height:1.5}
+    .welcome-cta{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+    .btn{padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;transition:all .15s;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-primary:hover{background:var(--accent2)}
+    .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+    .btn-secondary:hover{background:var(--surface2);border-color:var(--border2)}
+    .welcome-privacy{font-size:9px;color:var(--muted2);text-align:center;line-height:1.5;margin-top:4px}
+    .welcome-privacy a{color:var(--muted)}
+
+    /* ── Idle (analizzato, tutto ok) ── */
+    #idle{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:32px 20px;text-align:center}
+    #idle.visible{display:flex}
+    .idle-icon{width:48px;height:48px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
+    .idle-icon svg{width:22px;height:22px;fill:var(--muted2)}
+    .idle-title{font-size:12px;color:var(--text);font-weight:500}
+    .idle-meta{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+    /* ── Banners interni ── */
+    .banner{padding:11px 13px;display:none;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border);animation:slideDown .25s cubic-bezier(.22,1,.36,1)}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    .banner.visible{display:flex}
+    .banner.new{background:linear-gradient(180deg,#0c1a2e 0%,#0a1424 100%);border-color:var(--blue-border)}
+    .banner.cc{background:linear-gradient(180deg,#0d1422 0%,#0a1019 100%);border-color:var(--blue-border)}
+    .banner.danger{background:linear-gradient(180deg,#2a0a0a 0%,#1f0707 100%);border-color:var(--danger-border)}
+    .banner-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .banner.new .banner-icon{background:var(--blue-dim);color:var(--blue)}
+    .banner.cc .banner-icon{background:var(--blue-dim);color:var(--warn)}
+    .banner.danger .banner-icon{background:var(--danger);color:#fff}
+    .banner-icon svg{width:12px;height:12px;fill:currentColor}
+    .banner-body{flex:1;min-width:0}
+    .banner-title{font-size:12px;font-weight:600;margin-bottom:3px}
+    .banner.new .banner-title{color:#79c0ff}
+    .banner.cc .banner-title{color:#e3b341}
+    .banner.danger .banner-title{color:#ffa198}
+    .banner-detail{font-family:var(--mono);font-size:11px;margin-bottom:3px;word-break:break-all}
+    .banner.new .banner-detail{color:var(--accent2)}
+    .banner.cc .banner-detail{color:#d29922}
+    .banner.danger .banner-detail{color:var(--danger)}
+    .banner-sub{font-size:10px;line-height:1.4}
+    .banner.new .banner-sub{color:#388bfd}
+    .banner.cc .banner-sub{color:#9c7818}
+    .banner.danger .banner-sub{color:#a40e1c}
+    .banner-actions{margin-top:7px;display:flex;gap:6px;flex-wrap:wrap}
+    .banner-action{padding:4px 9px;border-radius:4px;font-size:10px;font-weight:500;background:rgba(255,255,255,.05);color:var(--muted);transition:all .15s}
+    .banner-action:hover{background:rgba(255,255,255,.08);color:var(--text)}
+
+    /* ── Advice box ── */
+    .advice{background:linear-gradient(180deg,#0a1628 0%,#08111e 100%);border:1px solid var(--blue-border);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:#79c0ff;line-height:1.6;display:none;margin:0 14px 12px}
+    .advice.visible{display:block}
+    .advice strong{color:var(--accent2);display:block;margin-bottom:3px;font-weight:600}
+
+    /* ── Domains section ── */
+    #domains{display:none;padding:10px 14px}
+    #domains.visible{display:block}
+    .section-label{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:9px}
+    .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+    .domain-list{display:flex;flex-direction:column;gap:6px}
+
+    .dcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;animation:fadeUp .25s ease forwards}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    .dcard.suspect{border-color:var(--danger-border);background:#160a0a}
+    .dcard.warning-card{border-color:#3d2800;background:#0f0a02}
+    .dcard-head{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:default;transition:background .15s}
+    .dcard.suspect .dcard-head,.dcard.warning-card .dcard-head{cursor:pointer}
+    .dcard.suspect .dcard-head:hover,.dcard.warning-card .dcard-head:hover{background:rgba(255,255,255,.02)}
+    .dc-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--muted2)}
+    .dcard.suspect .dc-dot{background:var(--danger);animation:pulse 1.5s ease-in-out infinite}
+    .dcard.warning-card .dc-dot{background:var(--warn)}
+    .dc-domain{font-family:var(--mono);font-size:11px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dcard.safe .dc-domain{color:var(--text)}
+    .dcard.suspect .dc-domain{color:var(--danger)}
+    .dcard.warning-card .dc-domain{color:var(--warn)}
+    .dc-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .dc-score{font-family:var(--mono);font-size:11px;font-weight:600}
+    .dc-badge{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.05em;padding:2px 6px;border-radius:3px}
+    .dcard.safe .dc-badge{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+    .dcard.suspect .dc-badge{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border)}
+    .dcard.warning-card .dc-badge{background:#1c1505;color:var(--warn);border:1px solid #3d2800}
+    .dc-chevron{color:var(--muted);transition:transform .2s}
+    .dc-chevron svg{width:10px;height:10px;fill:currentColor}
+    .dcard.open .dc-chevron{transform:rotate(180deg)}
+
+    .dcard-detail{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.22,1,.36,1)}
+    .dcard.open .dcard-detail{max-height:600px;border-top:1px solid var(--border)}
+    .dcard-detail-inner{padding:10px;display:flex;flex-direction:column;gap:8px}
+    .detail-block{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 10px}
+    .detail-title{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .detail-row{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:11px}
+    .detail-row+.detail-row{border-top:1px solid var(--border)}
+    .detail-key{color:var(--muted);min-width:64px;font-family:var(--mono);font-size:9px;text-transform:uppercase;flex-shrink:0}
+    .detail-val{color:var(--text);word-break:break-all;flex:1}
+    .detail-val.ok{color:var(--ok)} .detail-val.danger{color:var(--danger)} .detail-val.warn{color:var(--warn)}
+
+    /* ── Diff block ── */
+    .diff-block{background:var(--danger-dim);border:1px solid var(--danger-border);border-radius:5px;padding:9px 10px}
+    .diff-block .detail-title{color:var(--danger)}
+    .diff-pair{display:flex;flex-direction:column;gap:4px;margin-top:2px}
+    .diff-line{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;font-family:var(--mono);font-size:11px}
+    .diff-line.legit{background:var(--ok-dim);border:1px solid #166534}
+    .diff-line.fake{background:#1f0a0a;border:1px solid var(--danger-border)}
+    .diff-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:600;flex-shrink:0;min-width:32px}
+    .diff-line.legit .diff-lbl{color:var(--ok)}
+    .diff-line.fake .diff-lbl{color:var(--danger)}
+    .diff-chars .ch{color:var(--danger);font-weight:700;text-decoration:underline}
+
+    /* ── Settings ── */
+    #settings{display:none;flex:1;flex-direction:column;animation:fadeIn .3s ease}
+    #settings.visible{display:flex}
+    .settings-back{padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);cursor:pointer;transition:color .15s}
+    .settings-back:hover{color:var(--text)}
+    .settings-back svg{width:13px;height:13px;fill:currentColor}
+    .settings-body{padding:14px;display:flex;flex-direction:column;gap:14px}
+    .setting-section{display:flex;flex-direction:column;gap:8px}
+    .setting-section-title{font-size:11px;font-weight:600;color:var(--text)}
+    .setting-section-desc{font-size:10px;color:var(--muted);line-height:1.5;margin-top:-4px}
+    .domain-input-row{display:flex;gap:6px}
+    .domain-input{flex:1;padding:7px 9px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none}
+    .domain-input:focus{border-color:var(--accent)}
+    .btn-add{padding:7px 12px;background:var(--accent);color:#fff;border-radius:5px;font-size:11px;font-weight:500}
+    .btn-add:hover{background:var(--accent2)}
+    .domain-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+    .domain-tag{display:flex;align-items:center;gap:5px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:10px}
+    .domain-tag-x{cursor:pointer;color:var(--muted);font-weight:600}
+    .domain-tag-x:hover{color:var(--danger)}
+    .lang-row{display:flex;gap:6px}
+    .lang-btn{flex:1;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted);transition:all .15s}
+    .lang-btn.active{background:var(--blue-dim);border-color:var(--blue);color:var(--accent2)}
+    .lang-btn:hover{color:var(--text)}
+    .danger-btn{padding:7px 11px;background:transparent;border:1px solid var(--danger-border);color:var(--danger);border-radius:5px;font-size:10px;width:fit-content}
+    .danger-btn:hover{background:var(--danger-dim)}
+    .info-row{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono)}
+    .info-row span:first-child{color:var(--muted)}
+    .info-row span:last-child{color:var(--text)}
+
+    /* ── Footer ── */
+    footer{border-top:1px solid var(--border);padding:7px 14px;font-family:var(--mono);font-size:9px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+    .foot-link{cursor:pointer;color:var(--muted);transition:color .15s}
+    .foot-link:hover{color:var(--text)}
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm-1 14l-4-4 1.4-1.4L11 12.2l5.6-5.6L18 8l-7 7z"/></svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">EmailChainGuard</span>
+        <span class="logo-tag">v4.0</span>
+      </div>
+    </div>
+    <button class="header-btn" id="btn-settings" title="Impostazioni">
+      <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.32-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.07.63-.07.94 0 .31.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    </button>
+    <div class="status-dot" id="status-dot"></div>
+  </header>
+  <div class="scan-bar" id="scan-bar"></div>
+
+  <main id="main">
+
+    <!-- Welcome screen -->
+    <div id="welcome">
+      <div class="welcome-hero">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm-1 14l-4-4 1.4-1.4L11 12.2l5.6-5.6L18 8l-7 7z"/></svg>
+        </div>
+        <div>
+          <div class="welcome-title">Benvenuto</div>
+          <div class="welcome-subtitle">EmailChainGuard protegge le tue conversazioni email da spoofing e impersonificazione</div>
+        </div>
+      </div>
+      <div class="welcome-features">
+        <div class="feat">
+          <div class="feat-icon danger"><svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 4l7.53 13H4.47L12 6zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg></div>
+          <div class="feat-body">
+            <div class="feat-title">Domini sospetti</div>
+            <div class="feat-desc">Rileva domini falsi che imitano quelli reali (ilsereno.com vs llsereno.com)</div>
+          </div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon blue"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+          <div class="feat-body">
+            <div class="feat-title">Primo contatto</div>
+            <div class="feat-desc">Avvisa quando ricevi email da un mittente per la prima volta</div>
+          </div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon warn"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
+          <div class="feat-body">
+            <div class="feat-title">Nuovo CC nella conversazione</div>
+            <div class="feat-desc">Segnala se qualcuno è stato aggiunto in CC durante la catena email</div>
+          </div>
+        </div>
+      </div>
+      <div class="welcome-cta">
+        <button class="btn btn-primary" id="btn-welcome-start">Inizia</button>
+        <button class="btn btn-secondary" id="btn-welcome-graph">Abilita lettura conversazione completa</button>
+      </div>
+      <div class="welcome-privacy">I tuoi dati restano nel tuo profilo Outlook · Solo nomi di dominio vengono inviati al server di analisi</div>
+    </div>
+
+    <!-- Idle / tutto ok -->
+    <div id="idle">
+      <div class="idle-icon">
+        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+      </div>
+      <div class="idle-title">Email sicura</div>
+      <div class="idle-meta" id="idle-meta">—</div>
+    </div>
+
+    <!-- Banners -->
+    <div class="banner new" id="banner-new">
+      <div class="banner-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+      <div class="banner-body">
+        <div class="banner-title">Primo contatto</div>
+        <div class="banner-detail" id="banner-new-email"></div>
+        <div class="banner-sub">Non hai mai ricevuto email da questo mittente</div>
+        <div class="banner-actions">
+          <button class="banner-action" id="btn-mute-sender">Mai più avvisarmi</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="banner cc" id="banner-cc">
+      <div class="banner-icon"><svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 4l7.53 13H4.47L12 6zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg></div>
+      <div class="banner-body">
+        <div class="banner-title">Nuovo partecipante in CC</div>
+        <div class="banner-detail" id="banner-cc-detail"></div>
+        <div class="banner-sub">Non era presente nelle email precedenti di questa conversazione</div>
+      </div>
+    </div>
+
+    <div class="banner danger" id="banner-danger">
+      <div class="banner-icon"><svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
+      <div class="banner-body">
+        <div class="banner-title">Dominio sospetto rilevato</div>
+        <div class="banner-detail" id="banner-danger-detail"></div>
+        <div class="banner-sub">Verifica l'identità del mittente prima di rispondere</div>
+      </div>
+    </div>
+
+    <div class="advice" id="advice">
+      <strong>Come procedere</strong>
+      Non rispondere ancora. Contatta l'interlocutore tramite un canale diverso (telefono o nuova email da zero) per verificare. Non cliccare link né aprire allegati.
+    </div>
+
+    <!-- Domains -->
+    <div id="domains">
+      <div class="section-label">Domini analizzati</div>
+      <div class="domain-list" id="domain-list"></div>
+    </div>
+
+    <!-- Settings -->
+    <div id="settings">
+      <div class="settings-back" id="btn-back">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        <span>Torna all'analisi</span>
+      </div>
+      <div class="settings-body">
+        <div class="setting-section">
+          <div class="setting-section-title">Lingua</div>
+          <div class="lang-row">
+            <button class="lang-btn active" data-lang="it">Italiano</button>
+            <button class="lang-btn" data-lang="en">English</button>
+          </div>
+        </div>
+        <div class="setting-section">
+          <div class="setting-section-title">Domini della tua organizzazione</div>
+          <div class="setting-section-desc">Domini esclusi dall'analisi (es. la tua azienda)</div>
+          <div class="domain-input-row">
+            <input type="text" class="domain-input" id="own-domain-input" placeholder="esempio.com">
+            <button class="btn-add" id="btn-add-domain">Aggiungi</button>
+          </div>
+          <div class="domain-tags" id="own-domains"></div>
+        </div>
+        <div class="setting-section">
+          <div class="setting-section-title">Mittenti silenziati</div>
+          <div class="setting-section-desc">Non riceverai più avvisi di "primo contatto" per questi indirizzi</div>
+          <div class="domain-tags" id="muted-senders"></div>
+        </div>
+        <div class="setting-section">
+          <div class="setting-section-title">Memoria</div>
+          <button class="danger-btn" id="btn-reset-memory">Cancella memoria mittenti</button>
+        </div>
+        <div class="setting-section">
+          <div class="setting-section-title">Lettura conversazione completa</div>
+          <div class="setting-section-desc">Permette al plugin di leggere le email precedenti per rilevare nuovi CC</div>
+          <button class="btn btn-secondary" id="btn-graph-toggle">Stato: <span id="graph-status">non attivata</span></button>
+        </div>
+        <div class="setting-section">
+          <div class="setting-section-title">Informazioni</div>
+          <div class="info-row"><span>Versione</span><span>4.0.0</span></div>
+          <div class="info-row"><span>Backend</span><span id="info-backend">—</span></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <span id="foot-status">EmailChainGuard</span>
+    <span class="foot-link" id="foot-privacy">Privacy</span>
+  </footer>
+
+</div>
+<script src="taskpane.js"></script>
+</body>
+</html>
