@@ -13,7 +13,7 @@
 // ────────────────────────────────────────────────────────────
 const CONFIG = {
   BACKEND_URL:  'https://emailchainguard-backend.onrender.com',
-  ECG_API_KEY:  'MalibuStacy25_5', // <-- sostituisci con la tua chiave
+  ECG_API_KEY:  'ecg-dev-key-2024', // <-- sostituisci con la tua chiave
   AZURE_CLIENT_ID: 'f32f2bbe-8140-41f4-bb3b-8bddc8a3f495',
   AZURE_TENANT:    'common', // 'common' = multi-tenant. Usa il tenant ID per single-tenant
   SCOPES: ['Mail.Read', 'User.Read'],
@@ -187,29 +187,35 @@ const TOKEN_KEY = 'ecg_graph_token_v4';
 const TOKEN_EXP_KEY = 'ecg_graph_token_exp_v4';
 
 function _saveToken(token, expiresInSec) {
-  const expAt = Date.now() + (expiresInSec * 1000) - 60000;
-  // Salva in memoria (priorità massima)
-  _state.graphToken = token;
-  _state.graphTokenExp = expAt;
-  // Salva in roamingSettings (sopravvive a Storage Partitioning di Chrome)
-  if (_roamingOk()) {
+  return new Promise((resolve) => {
+    const expAt = Date.now() + (expiresInSec * 1000) - 60000;
+    // Salva in memoria
+    _state.graphToken = token;
+    _state.graphTokenExp = expAt;
+    // Salva in localStorage (sincrono, sempre disponibile come fallback)
     try {
-      Office.context.roamingSettings.set(TOKEN_KEY, token);
-      Office.context.roamingSettings.set(TOKEN_EXP_KEY, String(expAt));
-      Office.context.roamingSettings.saveAsync((res) => {
-        if (res.status !== Office.AsyncResultStatus.Succeeded) {
-          _state.lastGraphError = 'roaming save: ' + (res.error?.message || 'fail');
-        }
-      });
-    } catch (e) {
-      _state.lastGraphError = 'roaming set err: ' + e.message;
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(TOKEN_EXP_KEY, String(expAt));
+    } catch {}
+    // Salva in roamingSettings (asincrono - aspettiamo il completamento)
+    if (_roamingOk()) {
+      try {
+        Office.context.roamingSettings.set(TOKEN_KEY, token);
+        Office.context.roamingSettings.set(TOKEN_EXP_KEY, String(expAt));
+        Office.context.roamingSettings.saveAsync((res) => {
+          if (res.status !== Office.AsyncResultStatus.Succeeded) {
+            _state.lastGraphError = 'roaming save: ' + (res.error?.message || 'fail');
+          }
+          resolve();
+        });
+      } catch (e) {
+        _state.lastGraphError = 'roaming set err: ' + e.message;
+        resolve();
+      }
+    } else {
+      resolve();
     }
-  }
-  // Fallback localStorage (non sempre persistito in iframe partizionato)
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(TOKEN_EXP_KEY, String(expAt));
-  } catch {}
+  });
 }
 
 function _loadToken() {
@@ -278,13 +284,13 @@ function enableGraph() {
       }
       const dialog = asyncResult.value;
       let resolved = false;
-      dialog.addEventHandler(Office.EventType.DialogMessageReceived, function(arg) {
+      dialog.addEventHandler(Office.EventType.DialogMessageReceived, async function(arg) {
         _state.lastGraphError = 'dialog msg ricevuto len=' + (arg.message ? arg.message.length : 0);
         try {
           const data = JSON.parse(arg.message);
           if (data.access_token) {
             _state.lastGraphError = 'token ricevuto, saving...';
-            _saveToken(data.access_token, parseInt(data.expires_in || '3600', 10));
+            await _saveToken(data.access_token, parseInt(data.expires_in || '3600', 10));
             _state.graphEnabled = true;
             _storageSet(KEY_GRAPH_ENABLED, '1');
             _state.lastGraphError = 'token salvato OK';
