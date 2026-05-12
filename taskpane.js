@@ -391,6 +391,11 @@ Office.onReady(info => {
 function loadSettings() {
   _state.lang = _storageGet(KEY_LANG) || 'it';
   _state.graphEnabled = _storageGet(KEY_GRAPH_ENABLED) === '1';
+  // Pre-carica il token: forza la lettura da roamingSettings/localStorage in memoria
+  if (_state.graphEnabled) {
+    const t = _loadToken();
+    _state.bootTokenInfo = t ? 'boot:OK len=' + t.length : 'boot:NO ' + (_state.lastGraphError || '?');
+  }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -653,7 +658,8 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
   }
 
   const dbgExtra = _state.lastGraphError ? ` · ERR:${_state.lastGraphError}` : '';
-  document.getElementById('foot-status').textContent = `${domains.length} ${t('domains_analyzed')} · ${_state.lastCCDebug || ''}${dbgExtra}`;
+  const bootInfo = _state.bootTokenInfo ? ` · ${_state.bootTokenInfo}` : '';
+  document.getElementById('foot-status').textContent = `${domains.length} ${t('domains_analyzed')} · ${_state.lastCCDebug || ''}${dbgExtra}${bootInfo}`;
   _state.lastGraphError = null;
   _currentScreen = 'analysis';
 }
