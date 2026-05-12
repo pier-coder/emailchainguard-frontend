@@ -13,7 +13,7 @@
 // ────────────────────────────────────────────────────────────
 const CONFIG = {
   BACKEND_URL:  'https://emailchainguard-backend.onrender.com',
-  ECG_API_KEY:  'ecg-dev-key-2024', // <-- sostituisci con la tua chiave
+  ECG_API_KEY:  'MalibuStacy25_5', // <-- sostituisci con la tua chiave
   AZURE_CLIENT_ID: 'f32f2bbe-8140-41f4-bb3b-8bddc8a3f495',
   AZURE_TENANT:    'common', // 'common' = multi-tenant. Usa il tenant ID per single-tenant
   SCOPES: ['Mail.Read', 'User.Read'],
