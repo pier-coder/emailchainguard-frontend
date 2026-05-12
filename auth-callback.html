@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<title>EmailChainGuard - Authentication</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+body{background:#0a0e14;color:#e6edf3;font-family:sans-serif;padding:30px;text-align:center;margin:0}
+.spinner{width:32px;height:32px;border:3px solid #1f2733;border-top-color:#2f81f7;border-radius:50%;margin:12px auto;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+h2{font-size:14px;margin:0 0 6px;color:#e6edf3}
+p{font-size:11px;color:#7d8590;margin:0}
+</style>
+</head>
+<body>
+<div class="spinner"></div>
+<h2 id="t">Autenticazione in corso</h2>
+<p id="msg">Connessione a Microsoft 365...</p>
+<script>
+(function() {
+  var CLIENT_ID = 'f32f2bbe-8140-41f4-bb3b-8bddc8a3f495';
+  var TENANT    = 'common';
+  var SCOPES    = 'Mail.Read User.Read';
+  var REDIRECT  = 'https://pier-coder.github.io/emailchainguard-frontend/auth-callback.html';
+
+  function setMsg(text) { try { document.getElementById('msg').textContent = text; } catch(e) {} }
+
+  function parseParams(str) {
+    var out = {};
+    if (!str) return out;
+    str.replace(/^[#?]/, '').split('&').forEach(function(kv) {
+      var p = kv.split('=');
+      if (p[0]) out[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || '');
+    });
+    return out;
+  }
+
+  var hashParams  = parseParams(window.location.hash);
+  var queryParams = parseParams(window.location.search);
+
+  // Capisco se sono in un iframe (refresh silent) o in un dialog Office
+  var inIframe = false;
+  try { inIframe = (window.self !== window.top); } catch(e) { inIframe = true; }
+
+  // CASO 1: stiamo tornando da Microsoft con un token/errore
+  if (hashParams.access_token || hashParams.error || queryParams.error) {
+    var payload = JSON.stringify(Object.assign({}, queryParams, hashParams));
+
+    // 1a. Se siamo in iframe (silent refresh): postMessage al parent
+    if (inIframe) {
+      try {
+        window.parent.postMessage({ ecgAuth: true, payload: payload }, '*');
+        setMsg('Token rinnovato.');
+      } catch(e) {
+        setMsg('Errore postMessage: ' + e.message);
+      }
+      return;
+    }
+
+    // 1b. Office Dialog (autorizzazione interattiva): messageParent
+    Office.onReady(function() {
+      try {
+        if (Office && Office.context && Office.context.ui && Office.context.ui.messageParent) {
+          Office.context.ui.messageParent(payload);
+          setMsg('Autenticazione completata. Chiusura in corso...');
+          return;
+        }
+      } catch (e) {}
+      // 1c. Popup window fallback
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ ecgAuth: true, payload: payload }, '*');
+          setTimeout(function() { try { window.close(); } catch (e) {} }, 500);
+          setMsg('Autenticazione completata. Puoi chiudere questa finestra.');
+        }
+      } catch (e) {
+        setMsg('Errore: ' + e.message);
+      }
+    });
+    return;
+  }
+
+  // CASO 2: prima apertura — costruisci URL e reindirizza a Microsoft
+  var isSilent = queryParams.silent === '1';
+  var promptMode = isSilent ? 'none' : 'select_account';
+  setMsg(isSilent ? 'Rinnovo silenzioso...' : 'Reindirizzamento a Microsoft...');
+  var nonce = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  var params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: 'token',
+    redirect_uri: REDIRECT,
+    scope: SCOPES,
+    response_mode: 'fragment',
+    prompt: promptMode,
+    nonce: nonce,
+  });
+  var authUrl = 'https://login.microsoftonline.com/' + TENANT + '/oauth2/v2.0/authorize?' + params.toString();
+  window.location.replace(authUrl);
+})();
+</script>
+</body>
+</html>
