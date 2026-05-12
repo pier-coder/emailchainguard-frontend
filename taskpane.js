@@ -327,7 +327,7 @@ async function fetchConversationCC(conversationId, currentCreatedISO) {
   }
   try {
     const filter = `conversationId eq '${conversationId.replace(/'/g, "''")}'`;
-    const url = `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}&$select=ccRecipients,receivedDateTime&$orderby=receivedDateTime asc&$top=50`;
+    const url = `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}&$select=ccRecipients,receivedDateTime&$top=50`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!resp.ok) {
       let errBody = '';
