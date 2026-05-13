@@ -503,11 +503,22 @@ async function fetchConversationCC(conversationId, currentCreatedISO) {
 // ────────────────────────────────────────────────────────────
 //  OFFICE INIT
 // ────────────────────────────────────────────────────────────
-Office.onReady(info => {
+Office.onReady(async info => {
   if (info.host !== Office.HostType.Outlook) return;
   loadSettings();
   applyI18n();
   setupUI();
+
+  // Se Graph è attivo ma il token è scaduto, forza il refresh PRIMA della prima scansione
+  if (_state.graphEnabled && !_state.graphToken) {
+    try {
+      await _silentRefreshToken();
+      _state.bootTokenInfo = 'boot:refresh-OK';
+    } catch (e) {
+      _state.bootTokenInfo = 'boot:refresh-FAIL ' + (e.message || '').substring(0, 40);
+    }
+  }
+
   if (!_storageGet(KEY_WELCOME_SEEN)) {
     showScreen('welcome');
   } else {
