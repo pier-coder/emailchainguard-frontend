@@ -451,17 +451,30 @@ function _silentRefreshToken() {
   });
 }
 
-async function fetchConversationCC(conversationId, currentCreatedISO) {
-  // Restituisce { ccs: Set, hasPrior: boolean }
-  // Graph non supporta filtri combinati (conversationId + date), quindi filtriamo in JS
+function _normalizeSubject(s) {
+  if (!s) return '';
+  let n = s.trim();
+  // Rimuovi prefissi ricorsivi: Re:, RE:, R:, Fwd:, Fw:, F:, I:, AW:, ANTW:, TR:
+  const prefixRe = /^(\s*(re|r|fwd|fw|f|i|aw|antw|tr)\s*:\s*)+/i;
+  while (prefixRe.test(n)) {
+    n = n.replace(prefixRe, '');
+  }
+  // Normalizza spazi multipli
+  n = n.replace(/\s+/g, ' ').trim().toLowerCase();
+  return n;
+}
+
+async function fetchConversationCC(conversationId, currentCreatedISO, currentSubject, currentMessageId) {
+  // Restituisce { ccs: Set, hasPrior: boolean, source: 'convId'|'subject' }
   const token = await getGraphToken();
   if (!token) {
     _state.lastGraphError = 'token mancante';
     return null;
   }
   try {
+    // Step 1: query per conversationId
     const filter = `conversationId eq '${conversationId.replace(/'/g, "''")}'`;
-    const url = `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}&$select=ccRecipients,from,receivedDateTime&$top=50`;
+    const url = `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}&$select=ccRecipients,from,receivedDateTime,subject,id&$top=50`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!resp.ok) {
       let errBody = '';
@@ -470,30 +483,53 @@ async function fetchConversationCC(conversationId, currentCreatedISO) {
       return null;
     }
     const data = await resp.json();
-    const allMessages = data.value || [];
+    let allMessages = data.value || [];
 
     // Filtra in JavaScript: tieni solo i messaggi PRECEDENTI a quello corrente
     const currentTime = currentCreatedISO ? new Date(currentCreatedISO).getTime() : null;
-    const priorMessages = currentTime
+    let priorMessages = currentTime
       ? allMessages.filter(msg => {
           if (!msg.receivedDateTime) return false;
           return new Date(msg.receivedDateTime).getTime() < currentTime;
         })
-      : allMessages;
+      : allMessages.filter(msg => !currentMessageId || msg.id !== currentMessageId);
+
+    let source = 'convId';
+
+    // Step 2: fallback per SUBJECT normalizzato se conversationId non ha trovato thread
+    if (priorMessages.length === 0 && currentSubject) {
+      const normSubj = _normalizeSubject(currentSubject);
+      if (normSubj.length >= 3) {
+        // Recupera email recenti e filtra in JS per subject normalizzato
+        // Limit alle ultime ~50 email per costi/velocità
+        const subjUrl = `https://graph.microsoft.com/v1.0/me/messages?$select=ccRecipients,from,receivedDateTime,subject,id&$orderby=receivedDateTime desc&$top=50`;
+        const subjResp = await fetch(subjUrl, { headers: { Authorization: `Bearer ${token}` } });
+        if (subjResp.ok) {
+          const subjData = await subjResp.json();
+          const candidates = subjData.value || [];
+          priorMessages = candidates.filter(msg => {
+            if (msg.id === currentMessageId) return false;
+            if (currentTime && msg.receivedDateTime) {
+              if (new Date(msg.receivedDateTime).getTime() >= currentTime) return false;
+            }
+            return _normalizeSubject(msg.subject) === normSubj;
+          });
+          if (priorMessages.length > 0) source = 'subject';
+        }
+      }
+    }
 
     const ccs = new Set();
     priorMessages.forEach(msg => {
-      // CC
       (msg.ccRecipients || []).forEach(r => {
         const a = r.emailAddress?.address?.toLowerCase();
         if (a) ccs.add(a);
       });
-      // Anche i From precedenti contano come "partecipanti conosciuti"
       const fromA = msg.from?.emailAddress?.address?.toLowerCase();
       if (fromA) ccs.add(fromA);
     });
-    try { console.log('[ECG] Graph:', allMessages.length, 'tot,', priorMessages.length, 'prior,', ccs.size, 'CC'); } catch {}
-    return { ccs, hasPrior: priorMessages.length > 0 };
+    try { console.log('[ECG] Graph:', priorMessages.length, 'prior (' + source + '),', ccs.size, 'partecipanti'); } catch {}
+    return { ccs, hasPrior: priorMessages.length > 0, source };
   } catch (e) {
     _state.lastGraphError = 'exception: ' + (e.message || e.toString()).substring(0, 200);
     return null;
@@ -668,12 +704,14 @@ async function runScan() {
         try {
           if (item.dateTimeCreated) createdISO = new Date(item.dateTimeCreated).toISOString();
         } catch {}
+        const subj = item.subject || '';
+        const msgId = item.itemId || null;
         _ccDebug += ` graphOn iso=${createdISO ? 'sì' : 'no'}`;
-        const graphResult = await fetchConversationCC(convId, createdISO);
+        const graphResult = await fetchConversationCC(convId, createdISO, subj, msgId);
         if (graphResult) {
           knownCC = graphResult.ccs;
           hasPriorEmails = graphResult.hasPrior;
-          _ccDebug += ` prior=${hasPriorEmails ? 'sì' : 'no'} knownCC=${knownCC.size}`;
+          _ccDebug += ` prior=${hasPriorEmails ? 'sì' : 'no'}(${graphResult.source}) knownCC=${knownCC.size}`;
         } else {
           _ccDebug += ' graph=null';
         }
