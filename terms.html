@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Termini di servizio · EmailChainGuard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e14; --surface:#11161e; --border:#1f2733;
+    --text:#e6edf3; --muted:#7d8590; --accent:#2f81f7;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  body{padding:48px 24px;max-width:780px;margin:0 auto}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{margin-bottom:40px;border-bottom:1px solid var(--border);padding-bottom:24px}
+  .badge{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:16px}
+  .badge-dot{width:24px;height:24px;background:linear-gradient(135deg,#2f81f7,#1f6feb);border-radius:5px;display:flex;align-items:center;justify-content:center}
+  .badge-dot svg{width:13px;height:13px;fill:#fff}
+  h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+  .lead{color:var(--muted);font-size:15px}
+  .updated{margin-top:18px;font-size:12px;color:var(--muted);font-family:monospace}
+  h2{font-size:20px;font-weight:600;margin-top:40px;margin-bottom:14px;color:#fff}
+  p{margin-bottom:14px}
+  ul{margin:8px 0 16px 24px}
+  li{margin-bottom:8px}
+  strong{color:#fff;font-weight:600}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 22px;margin:18px 0}
+  .box.warn{border-color:#3d2800;background:#1c1505;color:#e3b341}
+  footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;text-align:center}
+  .nav{margin-bottom:24px;font-size:13px}
+  .nav a{color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav"><a href="./">← EmailChainGuard</a></div>
+  <div class="badge">
+    <div class="badge-dot">
+      <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 4.5 3.4 8.7 8 10 4.6-1.3 8-5.5 8-10V5l-8-3z" fill="rgba(255,255,255,.12)" stroke="#fff" stroke-width="1.4"/><circle cx="9" cy="10.5" r="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><circle cx="12.6" cy="13.5" r="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><circle cx="15" cy="10" r="1.8" fill="none" stroke="#fff" stroke-width="1.4"/></svg>
+    </div>
+    <span>EmailChainGuard · Documenti legali</span>
+  </div>
+  <h1>Termini di servizio</h1>
+  <p class="lead">Condizioni di utilizzo del plugin EmailChainGuard per Microsoft Outlook.</p>
+  <div class="updated">Ultimo aggiornamento: maggio 2026</div>
+</header>
+
+<h2>1. Accettazione dei termini</h2>
+<p>Utilizzando EmailChainGuard ("il Servizio") accetti integralmente questi Termini di servizio e la <a href="./privacy.html">Privacy Policy</a>. Se non accetti, ti preghiamo di non utilizzare il Servizio.</p>
+
+<h2>2. Descrizione del servizio</h2>
+<p>EmailChainGuard è un add-in per Microsoft Outlook che analizza le email aperte dall'utente per rilevare:</p>
+<ul>
+  <li>Domini sospetti con caratteristiche tipiche dello spoofing (typo squatting, registrazioni recenti, configurazione DNS anomala)</li>
+  <li>Mittenti mai visti in precedenza ("primo contatto")</li>
+  <li>Nuovi partecipanti aggiunti a conversazioni email esistenti</li>
+</ul>
+<p>Il Servizio è composto da un componente frontend (eseguito nel browser/client Outlook dell'utente) e un componente backend (server di analisi domini).</p>
+
+<h2>3. Licenza d'uso</h2>
+<p>Ti concediamo una licenza personale, non esclusiva, non trasferibile e revocabile per utilizzare il Servizio nelle modalità previste. Non sei autorizzato a:</p>
+<ul>
+  <li>Decompilare, disassemblare o effettuare reverse engineering del codice</li>
+  <li>Utilizzare il Servizio per scopi illegali o in violazione di leggi applicabili</li>
+  <li>Tentare di ottenere accesso non autorizzato al backend o ad altri sistemi correlati</li>
+  <li>Rivendere o ridistribuire il Servizio senza autorizzazione scritta</li>
+  <li>Utilizzare il Servizio per inviare richieste automatizzate di massa (scraping)</li>
+</ul>
+
+<h2>4. Limitazioni e disclaimer</h2>
+<div class="box warn">
+  <strong>Il Servizio è fornito "così com'è" senza garanzia di alcun tipo.</strong> EmailChainGuard è uno strumento di supporto alla sicurezza, ma non garantisce di rilevare tutti i tentativi di attacco né l'assenza di falsi positivi. La responsabilità finale delle azioni intraprese sulla base degli avvisi del plugin resta interamente dell'utente.
+</div>
+<p>In particolare, ti raccomandiamo di:</p>
+<ul>
+  <li>Verificare sempre l'identità del mittente tramite un canale alternativo (telefono, di persona) prima di compiere azioni sensibili come bonifici o condivisione di credenziali</li>
+  <li>Non basarti esclusivamente sugli avvisi del plugin per decisioni di sicurezza critiche</li>
+  <li>Mantenere aggiornati il sistema operativo, il browser e Outlook con le ultime patch di sicurezza</li>
+</ul>
+
+<h2>5. Limitazione di responsabilità</h2>
+<p>Nei limiti consentiti dalla legge, EmailChainGuard e i suoi gestori <strong>non saranno responsabili</strong> per:</p>
+<ul>
+  <li>Danni diretti, indiretti, incidentali o consequenziali derivanti dall'uso del Servizio</li>
+  <li>Perdite economiche derivanti da email fraudolente non rilevate dal plugin</li>
+  <li>Interruzioni del Servizio dovute a manutenzione, aggiornamenti o cause di forza maggiore</li>
+  <li>Errori nei dati restituiti da servizi terzi (WHOIS, VirusTotal, Google Safe Browsing)</li>
+</ul>
+
+<h2>6. Disponibilità del servizio</h2>
+<p>Ci impegniamo a mantenere il Servizio disponibile, ma non garantiamo un'uptime al 100%. Possiamo sospendere temporaneamente il Servizio per:</p>
+<ul>
+  <li>Manutenzione programmata (con preavviso quando possibile)</li>
+  <li>Aggiornamenti software</li>
+  <li>Eventi imprevisti (problemi di rete, attacchi DDoS, guasti dei provider cloud)</li>
+</ul>
+
+<h2>7. Modifiche al servizio</h2>
+<p>Ci riserviamo il diritto di modificare, aggiungere o rimuovere funzionalità del Servizio in qualsiasi momento. Per modifiche sostanziali daremo preavviso tramite il plugin stesso o tramite email se hai fornito un contatto.</p>
+
+<h2>8. Costo del servizio</h2>
+<p>EmailChainGuard è attualmente in fase di test e disponibile gratuitamente. Eventuali piani a pagamento futuri saranno annunciati con preavviso e non saranno applicati retroattivamente agli utenti esistenti del piano gratuito senza esplicita accettazione.</p>
+
+<h2>9. Risoluzione</h2>
+<p>Puoi smettere di usare il Servizio in qualsiasi momento disinstallando l'add-in dalle impostazioni di Outlook. Ci riserviamo il diritto di sospendere l'accesso al backend per utenti che violino questi termini.</p>
+
+<h2>10. Legge applicabile e foro competente</h2>
+<p>Questi termini sono regolati dalla legge italiana. Eventuali controversie saranno di competenza del foro del tuo luogo di residenza, salvo che la legge non disponga diversamente per i consumatori.</p>
+
+<h2>11. Contatti</h2>
+<p>Per domande sui termini di servizio: <a href="mailto:support@emailchainguard.example">support@emailchainguard.example</a></p>
+
+<footer>
+  <p>EmailChainGuard · <a href="./privacy.html">Privacy Policy</a> · <a href="./">Pagina principale</a></p>
+</footer>
+</body>
+</html>
