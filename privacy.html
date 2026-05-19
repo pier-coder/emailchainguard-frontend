@@ -66,8 +66,8 @@
   <h1>Privacy Policy</h1>
   <p class="lead lang-it">Come gestiamo i tuoi dati quando usi EmailChainGuard.</p>
   <p class="lead lang-en">How we handle your data when you use EmailChainGuard.</p>
-  <div class="updated lang-it">Ultimo aggiornamento: maggio 2026</div>
-  <div class="updated lang-en">Last updated: May 2026</div>
+  <div class="updated lang-it">Ultimo aggiornamento: 19 maggio 2026</div>
+  <div class="updated lang-en">Last updated: May 19, 2026</div>
 </header>
 
 <!-- ─────── ITALIANO ─────── -->
@@ -90,6 +90,7 @@
   <li>Domini della tua organizzazione configurati nelle impostazioni</li>
   <li>Preferenze utente (lingua, attivazione funzioni)</li>
   <li>Token di accesso a Microsoft Graph (se hai attivato la lettura conversazione completa)</li>
+  <li>Preferenza di consenso agli analytics anonimi (opt-in, default disattivata)</li>
 </ul>
 
 <h3>2.2 Dati inviati al nostro server di analisi</h3>
@@ -120,6 +121,7 @@
   <li><strong>Server DNS pubblici</strong> – per verificare record MX, SPF, DMARC</li>
   <li><strong>VirusTotal</strong> (<a href="https://www.virustotal.com/" target="_blank" rel="noopener">privacy policy</a>) – per la reputazione del dominio</li>
   <li><strong>Google Safe Browsing</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) – per il check su URL malevoli</li>
+  <li><strong>Umami Cloud</strong> (<a href="https://umami.is/privacy" target="_blank" rel="noopener">privacy policy</a>) – statistiche d'uso aggregate, <strong>solo se hai dato consenso esplicito</strong> dalle impostazioni del plugin. Server hosted in UE. Nessun cookie, nessun identificatore persistente, nessun dato personale.</li>
 </ul>
 <p>Non condividiamo dati personali con inserzionisti, broker di dati o altre terze parti per scopi commerciali.</p>
 
@@ -139,8 +141,22 @@
 <h2>8. Sicurezza</h2>
 <p>Tutte le comunicazioni tra il plugin e il backend avvengono in HTTPS con TLS 1.2+. L'accesso al backend richiede un'API key. Il token Microsoft Graph è memorizzato solo nel tuo profilo Microsoft 365 e non lascia mai il tuo dispositivo.</p>
 
-<h2>9. Cookie</h2>
+<h2 id="analytics">9. Cookie e analytics</h2>
 <p>EmailChainGuard <strong>non utilizza cookie</strong>. La memorizzazione delle preferenze avviene tramite Microsoft Roaming Settings e localStorage del browser, che non sono cookie e non sono utilizzati per profilazione.</p>
+<p><strong>Analytics anonimi (opt-in)</strong> — Dalle impostazioni del plugin puoi attivare l'invio di statistiche d'uso aggregate al nostro fornitore di analytics <strong>Umami Cloud</strong> (server in UE). Questa opzione è <strong>disattivata di default</strong> e richiede il tuo consenso esplicito (art. 6.1.a GDPR), revocabile in qualsiasi momento dalle stesse impostazioni.</p>
+<p>Quando il consenso è attivo, raccogliamo solo i seguenti eventi anonimi e aggregati, senza alcun identificatore persistente:</p>
+<ul>
+  <li><strong>Avvio del plugin</strong> (versione, lingua dell'interfaccia)</li>
+  <li><strong>Tipo di banner mostrato</strong> (primo contatto, nuovo partecipante, dominio sospetto) e, per i domini sospetti, una fascia di rischio (bassa / media / alta)</li>
+  <li><strong>Cambio lingua</strong> (it ↔ en)</li>
+  <li><strong>Apertura impostazioni</strong></li>
+  <li><strong>Attivazione/disattivazione</strong> della lettura conversazione completa (Microsoft Graph)</li>
+  <li><strong>Aggiunta/rimozione</strong> di un dominio della tua organizzazione (solo conteggio totale, mai il nome del dominio)</li>
+  <li><strong>Cancellazione memoria mittenti</strong></li>
+  <li><strong>Click su "Segnala un problema" o "Suggerisci una funzione"</strong></li>
+  <li><strong>Modifica del consenso analytics stesso</strong></li>
+</ul>
+<p><strong>Non raccogliamo mai:</strong> indirizzi email, mittenti, oggetti delle email, domini analizzati, indirizzi IP completi, cookie, fingerprint del browser, identificatori utente persistenti. Umami non utilizza cookie e non rileva l'utente individualmente tra sessioni.</p>
 
 <h2>10. Modifiche a questa policy</h2>
 <p>Eventuali aggiornamenti sostanziali saranno notificati tramite il plugin stesso e tramite la pagina "Cosa c'è di nuovo" nelle impostazioni. La data di ultimo aggiornamento è sempre visibile in cima a questo documento.</p>
@@ -171,6 +187,7 @@
   <li>Your organization's domains configured in the settings</li>
   <li>User preferences (language, feature activation)</li>
   <li>Microsoft Graph access tokens (if you have enabled full conversation reading)</li>
+  <li>Anonymous analytics consent preference (opt-in, default disabled)</li>
 </ul>
 
 <h3>2.2 Data sent to our analysis server</h3>
@@ -201,6 +218,7 @@
   <li><strong>Public DNS servers</strong> – to verify MX, SPF, DMARC records</li>
   <li><strong>VirusTotal</strong> (<a href="https://www.virustotal.com/" target="_blank" rel="noopener">privacy policy</a>) – for domain reputation</li>
   <li><strong>Google Safe Browsing</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) – for malicious URL checks</li>
+  <li><strong>Umami Cloud</strong> (<a href="https://umami.is/privacy" target="_blank" rel="noopener">privacy policy</a>) – aggregated usage statistics, <strong>only if you have given explicit consent</strong> in the plugin settings. Servers hosted in the EU. No cookies, no persistent identifiers, no personal data.</li>
 </ul>
 <p>We do not share personal data with advertisers, data brokers or other third parties for commercial purposes.</p>
 
@@ -220,8 +238,22 @@
 <h2>8. Security</h2>
 <p>All communications between the plugin and the backend use HTTPS with TLS 1.2+. Backend access requires an API key. The Microsoft Graph token is stored only in your Microsoft 365 profile and never leaves your device.</p>
 
-<h2>9. Cookies</h2>
+<h2 id="analytics-en">9. Cookies and analytics</h2>
 <p>EmailChainGuard <strong>does not use cookies</strong>. Preferences are stored via Microsoft Roaming Settings and browser localStorage, which are not cookies and are not used for profiling.</p>
+<p><strong>Anonymous analytics (opt-in)</strong> — From the plugin settings you can enable sending aggregated usage statistics to our analytics provider <strong>Umami Cloud</strong> (EU-hosted servers). This option is <strong>disabled by default</strong> and requires your explicit consent (art. 6.1.a GDPR), revocable at any time from the same settings.</p>
+<p>When consent is active, we only collect the following anonymous and aggregated events, with no persistent identifier:</p>
+<ul>
+  <li><strong>Add-in load</strong> (version, interface language)</li>
+  <li><strong>Type of banner shown</strong> (first contact, new participant, suspicious domain) and, for suspicious domains, a risk bucket (low / medium / high)</li>
+  <li><strong>Language change</strong> (it ↔ en)</li>
+  <li><strong>Settings opened</strong></li>
+  <li><strong>Enabling/disabling</strong> full conversation reading (Microsoft Graph)</li>
+  <li><strong>Adding/removing</strong> an organization domain (only total count, never the domain name)</li>
+  <li><strong>Sender memory cleared</strong></li>
+  <li><strong>Click on "Report a problem" or "Suggest a feature"</strong></li>
+  <li><strong>Change of the analytics consent itself</strong></li>
+</ul>
+<p><strong>We never collect:</strong> email addresses, senders, email subjects, analyzed domains, full IP addresses, cookies, browser fingerprints, persistent user identifiers. Umami does not use cookies and does not track individual users across sessions.</p>
 
 <h2>10. Changes to this policy</h2>
 <p>Any substantial updates will be notified through the plugin itself and through the "What's new" page in the settings. The date of last update is always visible at the top of this document.</p>
@@ -255,6 +287,15 @@ function setLang(lang) {
   const param = new URLSearchParams(window.location.search).get('lang');
   if (param === 'it' || param === 'en') lang = param;
   setLang(lang);
+  // setLang() resetta lo scroll: re-applica l'anchor del fragment.
+  // In modalita' EN, il link #analytics (puntato dal plugin) va rimappato a #analytics-en
+  // perche' gli heading delle due lingue convivono nel DOM con ID distinti.
+  const hash = window.location.hash;
+  if (hash) {
+    const targetId = (hash === '#analytics' && lang === 'en') ? 'analytics-en' : hash.slice(1);
+    const target = document.getElementById(targetId);
+    if (target) target.scrollIntoView();
+  }
 })();
 </script>
 </body>
