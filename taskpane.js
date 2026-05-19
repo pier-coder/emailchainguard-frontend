@@ -29,6 +29,7 @@ const KEY_KNOWN_CC      = 'ecg_known_cc_v4';
 const KEY_OWN_DOMAINS   = 'ecg_own_domains_v4';
 const KEY_LANG          = 'ecg_lang_v4';
 const KEY_GRAPH_ENABLED = 'ecg_graph_enabled_v4';
+const KEY_ANALYTICS_CONSENT = 'ecg_analytics_consent_v4';
 
 // Cache memoria
 const _cache = {
@@ -91,6 +92,11 @@ const I18N = {
     'btn_reset':         'Cancella memoria mittenti',
     'set_graph':         'Lettura conversazione completa',
     'set_graph_desc':    'Permette al plugin di leggere le email precedenti per rilevare nuovi CC',
+    'set_analytics':     'Aiutaci a migliorare il prodotto',
+    'set_analytics_desc':'Invia statistiche d\'uso anonime e aggregate. Nessun dato personale, nessun indirizzo email, nessun dominio analizzato.',
+    'set_analytics_link':'Cosa raccogliamo',
+    'btn_analytics_grant':  'non attivata',
+    'btn_analytics_revoke': 'attivata',
     'state_label':       'Stato',
     'set_info':          'Informazioni',
     'info_version':      'Versione',
@@ -159,6 +165,11 @@ const I18N = {
     'btn_reset':         'Clear sender memory',
     'set_graph':         'Full conversation reading',
     'set_graph_desc':    'Allows the plugin to read previous emails to detect new CCs',
+    'set_analytics':     'Help us improve the product',
+    'set_analytics_desc':'Send anonymous, aggregated usage statistics. No personal data, no email addresses, no analyzed domains.',
+    'set_analytics_link':'What we collect',
+    'btn_analytics_grant':  'not enabled',
+    'btn_analytics_revoke': 'enabled',
     'state_label':       'Status',
     'set_info':          'About',
     'info_version':      'Version',
@@ -202,8 +213,15 @@ function applyI18n() {
   if (lp) lp.href = `https://pier-coder.github.io/emailchainguard-frontend/privacy.html?lang=${_state.lang}`;
   const lt = document.getElementById('link-terms');
   if (lt) lt.href = `https://pier-coder.github.io/emailchainguard-frontend/terms.html?lang=${_state.lang}`;
+  const la = document.getElementById('link-analytics');
+  if (la) la.href = `https://pier-coder.github.io/emailchainguard-frontend/privacy.html?lang=${_state.lang}#analytics`;
 }
 function t(key) { return I18N[_state.lang]?.[key] || I18N.it[key] || key; }
+
+// Helper analytics: no-op se modulo non caricato o consenso revocato
+function _track(event, props) {
+  try { if (window.ECGAnalytics) window.ECGAnalytics.track(event, props); } catch {}
+}
 
 // ────────────────────────────────────────────────────────────
 //  STORAGE
@@ -599,6 +617,13 @@ Office.onReady(async info => {
   applyI18n();
   setupUI();
 
+  // Bootstrap analytics se consenso opt-in gia' concesso in sessioni precedenti
+  if (_storageGet(KEY_ANALYTICS_CONSENT) === 'granted' && window.ECGAnalytics) {
+    window.ECGAnalytics.load();
+    // Diamo un attimo allo script Umami di inizializzarsi prima del primo track
+    setTimeout(() => _track('addin_loaded', { version: '4.0.0', lang: _state.lang }), 800);
+  }
+
   // Se Graph è attivo ma il token è scaduto, forza il refresh PRIMA della prima scansione
   if (_state.graphEnabled && !_state.graphToken) {
     try {
@@ -673,14 +698,19 @@ function setupUI() {
     }
   });
   // Settings
-  document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    _track('settings_opened');
+    showScreen('settings');
+  });
   document.getElementById('btn-back').addEventListener('click', () => runScan());
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.addEventListener('click', () => {
+      const prev = _state.lang;
       _state.lang = b.dataset.lang;
       _storageSet(KEY_LANG, _state.lang);
       applyI18n();
       renderSettings();
+      if (prev !== _state.lang) _track('lang_changed', { to: _state.lang });
     });
   });
   document.getElementById('btn-add-domain').addEventListener('click', addOwnDomain);
@@ -689,10 +719,11 @@ function setupUI() {
   });
   document.getElementById('btn-reset-memory').addEventListener('click', resetMemory);
   document.getElementById('btn-graph-toggle').addEventListener('click', toggleGraph);
+  document.getElementById('btn-analytics-toggle').addEventListener('click', toggleAnalytics);
 
   // Segnalazioni / suggerimenti / contatti — apre client email con mailto precompilato
-  document.getElementById('btn-report-bug').addEventListener('click', () => openMailto('bug'));
-  document.getElementById('btn-suggest').addEventListener('click', () => openMailto('suggestion'));
+  document.getElementById('btn-report-bug').addEventListener('click', () => { _track('feedback_clicked', { kind: 'bug' }); openMailto('bug'); });
+  document.getElementById('btn-suggest').addEventListener('click', () => { _track('feedback_clicked', { kind: 'suggest' }); openMailto('suggestion'); });
   document.getElementById('contact-email-link').addEventListener('click', (e) => {
     e.preventDefault();
     openMailto('contact');
@@ -909,12 +940,14 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
     document.getElementById('banner-new-email').textContent = newSenderEmail;
     document.getElementById('banner-new').classList.add('visible');
     hasContent = true;
+    _track('banner_shown', { type: 'first_contact' });
   }
 
   if (newCCAddrs.length > 0) {
     document.getElementById('banner-cc-detail').textContent = newCCAddrs.join(', ');
     document.getElementById('banner-cc').classList.add('visible');
     hasContent = true;
+    _track('banner_shown', { type: 'new_participant' });
   }
 
   if (overall_label === 'danger' || overall_label === 'warning') {
@@ -925,6 +958,14 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
     document.getElementById('banner-danger').classList.add('visible');
     document.getElementById('advice').classList.add('visible');
     hasContent = true;
+    // Bucket allineato 1:1 alle soglie del backend (risk_score.py:122-127):
+    //   score >= 50  -> label="danger"  -> risk_bucket="high"
+    //   score >= 25  -> label="warning" -> risk_bucket="med"
+    //   score <  25  -> label="ok" / is_suspect=false -> banner non mostrato
+    const maxSuspectScore = domains.reduce(
+      (m, d) => d.is_suspect ? Math.max(m, Number(d.risk_score) || 0) : m, 0);
+    const risk_bucket = maxSuspectScore >= 50 ? 'high' : 'med';
+    _track('banner_shown', { type: 'suspicious', risk_bucket });
   }
 
   if (domains.length > 0) {
@@ -1114,6 +1155,7 @@ function renderSettings() {
         const set = loadOwnDomains();
         set.delete(d);
         saveOwnDomains(set);
+        _track('own_domain_changed', { action: 'remove', count: set.size });
         renderSettings();
       });
       ownEl.appendChild(tag);
@@ -1122,6 +1164,12 @@ function renderSettings() {
   // Mittenti silenziati
   // Graph status
   document.getElementById('graph-status').textContent = _state.graphEnabled ? t('graph_active') : t('graph_inactive');
+  // Analytics consent status
+  const aStatus = document.getElementById('analytics-status');
+  if (aStatus) {
+    const granted = _storageGet(KEY_ANALYTICS_CONSENT) === 'granted';
+    aStatus.textContent = granted ? t('btn_analytics_revoke') : t('btn_analytics_grant');
+  }
 }
 
 function addOwnDomain() {
@@ -1131,6 +1179,7 @@ function addOwnDomain() {
   const set = loadOwnDomains();
   set.add(val);
   saveOwnDomains(set);
+  _track('own_domain_changed', { action: 'add', count: set.size });
   input.value = '';
   renderSettings();
 }
@@ -1141,6 +1190,7 @@ function resetMemory() {
   _cache.cc = {};
   _storageRemove(KEY_KNOWN_SENDERS);
   _storageRemove(KEY_KNOWN_CC);
+  _track('memory_cleared');
   document.getElementById('foot-status').textContent = t('reset_done');
 }
 
@@ -1151,11 +1201,13 @@ async function toggleGraph() {
     try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_EXP_KEY); } catch {}
     _state.graphToken = null;
     _state.graphTokenExp = 0;
+    _track('graph_disabled');
     renderSettings();
   } else {
     document.getElementById('graph-status').textContent = t('graph_enabling');
     try {
       await enableGraph();
+      _track('graph_enabled');
       renderSettings();
       // Mostra dettaglio nel footer
       if (_state.lastGraphError) {
@@ -1165,6 +1217,28 @@ async function toggleGraph() {
       const detail = _state.lastGraphError || e.message || 'unknown';
       document.getElementById('graph-status').textContent = t('graph_error') + ': ' + detail.substring(0, 60);
     }
+  }
+}
+
+function toggleAnalytics() {
+  const granted = _storageGet(KEY_ANALYTICS_CONSENT) === 'granted';
+  if (granted) {
+    // Revoca: spara l'evento PRIMA di scaricare lo script, altrimenti viene perso
+    _track('analytics_consent_changed', { granted: false });
+    if (window.ECGAnalytics) window.ECGAnalytics.unload();
+    _storageSet(KEY_ANALYTICS_CONSENT, 'denied');
+    renderSettings();
+  } else {
+    _storageSet(KEY_ANALYTICS_CONSENT, 'granted');
+    if (window.ECGAnalytics) {
+      window.ECGAnalytics.load();
+      // Aspetta inizializzazione Umami prima di tracciare consenso + addin_loaded
+      setTimeout(() => {
+        _track('analytics_consent_changed', { granted: true });
+        _track('addin_loaded', { version: '4.0.0', lang: _state.lang });
+      }, 800);
+    }
+    renderSettings();
   }
 }
 

@@ -357,6 +357,12 @@
           <button class="btn btn-secondary" id="btn-graph-toggle"><span data-i18n="state_label">Stato</span>: <span id="graph-status">non attivata</span></button>
         </div>
         <div class="setting-section">
+          <div class="setting-section-title" data-i18n="set_analytics">Aiutaci a migliorare il prodotto</div>
+          <div class="setting-section-desc" data-i18n="set_analytics_desc">Invia statistiche d'uso anonime e aggregate. Nessun dato personale, nessun indirizzo email, nessun dominio analizzato.</div>
+          <button class="btn btn-secondary" id="btn-analytics-toggle"><span data-i18n="state_label">Stato</span>: <span id="analytics-status">non attivata</span></button>
+          <a href="https://pier-coder.github.io/emailchainguard-frontend/privacy.html#analytics" target="_blank" rel="noopener" id="link-analytics" style="display:block;margin-top:6px;color:var(--accent);font-family:var(--mono);font-size:11px" data-i18n="set_analytics_link">Cosa raccogliamo</a>
+        </div>
+        <div class="setting-section">
           <div class="setting-section-title" data-i18n="set_feedback">Segnalazioni e suggerimenti</div>
           <div class="setting-section-desc" data-i18n="set_feedback_desc">Apre il tuo client email con un messaggio precompilato verso il nostro supporto</div>
           <div style="display:flex;flex-direction:column;gap:6px">
@@ -386,6 +392,7 @@
   </footer>
 
 </div>
+<script src="analytics.js"></script>
 <script src="taskpane.js"></script>
 </body>
 </html>
