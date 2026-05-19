@@ -101,11 +101,15 @@
 </ul>
 <p>Questi dati sono utilizzati esclusivamente per eseguire i controlli WHOIS, DNS e reputazione del dominio. <strong>Non vengono salvati permanentemente.</strong> I log temporanei del server (fino a 7 giorni) contengono solo metadati tecnici (timestamp, codice di stato HTTP).</p>
 
+<h3>2.2.2 Dati inviati al servizio di monitoraggio errori</h3>
+<p>Quando il plugin incontra un errore tecnico (crash, eccezione non gestita, fallimento di chiamate al backend o a Microsoft Graph), invia automaticamente a <strong>Sentry</strong> uno stack trace e alcuni metadati per consentirci di diagnosticarlo e correggerlo. Vedi la <a href="#error-monitoring">sezione 10</a> per il dettaglio completo. Questa funzione è attiva di default ma puoi disattivarla dalle impostazioni del plugin.</p>
+
 <h3>2.3 Dati richiesti a Microsoft Graph (opzionale)</h3>
 <p>Se hai attivato la funzione "Lettura conversazione completa", il plugin chiede a Microsoft Graph i metadati delle email precedenti dello stesso thread (mittenti, CC, oggetto, data). Questi dati vengono elaborati solo nel tuo browser e mai inviati al nostro server.</p>
 
 <h2>3. Base giuridica del trattamento</h2>
 <p>Il trattamento dei dati di dominio è basato sull'<strong>interesse legittimo</strong> (art. 6.1.f GDPR): proteggere te e la tua organizzazione da tentativi di frode e attacchi BEC. L'attivazione di Microsoft Graph è invece basata sul tuo <strong>consenso esplicito</strong> (art. 6.1.a GDPR), revocabile in qualsiasi momento dalle impostazioni del plugin.</p>
+<p>Anche il <strong>monitoraggio errori</strong> (vedi <a href="#error-monitoring">sezione 10</a>) si basa sull'<strong>interesse legittimo</strong> (art. 6.1.f GDPR): mantenere il plugin sicuro e funzionante. Puoi esercitare in qualsiasi momento il <strong>diritto di opposizione</strong> (art. 21 GDPR) disattivando il toggle nelle impostazioni, oppure scrivendoci all'email di supporto.</p>
 
 <h2>4. Conservazione dei dati</h2>
 <ul>
@@ -122,6 +126,7 @@
   <li><strong>VirusTotal</strong> (<a href="https://www.virustotal.com/" target="_blank" rel="noopener">privacy policy</a>) – per la reputazione del dominio</li>
   <li><strong>Google Safe Browsing</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) – per il check su URL malevoli</li>
   <li><strong>Umami Cloud</strong> (<a href="https://umami.is/privacy" target="_blank" rel="noopener">privacy policy</a>) – statistiche d'uso aggregate, <strong>solo se hai dato consenso esplicito</strong> dalle impostazioni del plugin. Server hosted in UE. Nessun cookie, nessun identificatore persistente, nessun dato personale.</li>
+  <li><strong>Sentry GmbH</strong> (<a href="https://sentry.io/privacy/" target="_blank" rel="noopener">privacy policy</a>) – monitoraggio errori tecnici del plugin. Server hosted in UE (Francoforte). Stack trace e metadati tecnici anonimizzati lato client prima dell'invio. Attivo di default ai sensi dell'interesse legittimo (art. 6.1.f), opt-out disponibile nelle impostazioni del plugin.</li>
 </ul>
 <p>Non condividiamo dati personali con inserzionisti, broker di dati o altre terze parti per scopi commerciali.</p>
 
@@ -158,10 +163,39 @@
 </ul>
 <p><strong>Non raccogliamo mai:</strong> indirizzi email, mittenti, oggetti delle email, domini analizzati, indirizzi IP completi, cookie, fingerprint del browser, identificatori utente persistenti. Umami non utilizza cookie e non rileva l'utente individualmente tra sessioni.</p>
 
-<h2>10. Modifiche a questa policy</h2>
+<h2 id="error-monitoring">10. Monitoraggio errori</h2>
+<p>Per mantenere il plugin sicuro e funzionante, gli errori tecnici (crash JavaScript, eccezioni non gestite, fallimenti delle chiamate al backend o a Microsoft Graph) vengono inviati automaticamente al servizio di error monitoring <strong>Sentry</strong> (server in UE — Francoforte). Questa funzione è <strong>attiva di default</strong> sulla base dell'<strong>interesse legittimo</strong> (art. 6.1.f GDPR) e puoi disattivarla in qualsiasi momento dalle impostazioni del plugin (toggle "Monitoraggio errori") esercitando il <strong>diritto di opposizione</strong> (art. 21 GDPR).</p>
+<p>Quando il monitoraggio è attivo, raccogliamo solo i seguenti dati tecnici:</p>
+<ul>
+  <li><strong>Stack trace</strong> dell'errore (file, riga, colonna, nome funzione)</li>
+  <li><strong>Tipo e messaggio</strong> dell'eccezione (dopo lo scrubbing automatico delle stringhe sensibili)</li>
+  <li><strong>Versione del plugin</strong>, lingua dell'interfaccia, fase logica in cui l'errore si è verificato (es. "oauth_dialog_message_parse", "backend_analyze_timeout")</li>
+  <li><strong>User-agent</strong> del browser e timestamp dell'evento</li>
+  <li><strong>Breadcrumb</strong> tecnici (sequenza di eventi che hanno preceduto l'errore, es. click su un pulsante, fetch verso il backend), <strong>anch'essi scrubati</strong></li>
+</ul>
+<p>Prima dell'invio, il plugin esegue uno <strong>scrubbing automatico aggressivo</strong> lato client che rimuove:</p>
+<ul>
+  <li>Indirizzi email (sostituiti con <code>[redacted-email]</code>)</li>
+  <li>Token JWT e Bearer di Microsoft Graph (sostituiti con <code>[redacted-token]</code>)</li>
+  <li>ID opachi di messaggi e conversazioni Graph (sostituiti con <code>[redacted-graph-id]</code>)</li>
+  <li>Headers <code>Authorization</code>, <code>Cookie</code> e la nostra API key (rimossi interamente)</li>
+  <li>Body delle richieste HTTP (rimossi: potrebbero contenere la lista dei domini analizzati)</li>
+  <li>Qualsiasi evento o breadcrumb relativo al flusso OAuth (URL <code>login.microsoftonline.com</code>, <code>auth-callback.html</code>) è <strong>droppato interamente</strong></li>
+</ul>
+<p>Inoltre, Sentry è configurato con:</p>
+<ul>
+  <li><strong>sendDefaultPii: false</strong> — non vengono inviati IP utente, cookie, o headers identificativi</li>
+  <li><strong>Session Replay disabilitato</strong> — niente registrazione del DOM né dei click</li>
+  <li><strong>Performance tracing disabilitato</strong> — niente trace delle pagine visitate o degli URL richiesti</li>
+  <li><strong>Profiling disabilitato</strong> — niente profilazione delle prestazioni del browser</li>
+  <li><strong>Console capture disabilitato</strong> — i messaggi <code>console.log</code> non vengono mai inviati</li>
+</ul>
+<p>I dati raccolti sono conservati da Sentry per un massimo di <strong>30 giorni</strong> (retention del piano Developer), poi cancellati automaticamente. Vengono utilizzati esclusivamente per diagnosticare e correggere bug. Non vengono mai usati per profilazione, marketing, o terze parti.</p>
+
+<h2>11. Modifiche a questa policy</h2>
 <p>Eventuali aggiornamenti sostanziali saranno notificati tramite il plugin stesso e tramite la pagina "Cosa c'è di nuovo" nelle impostazioni. La data di ultimo aggiornamento è sempre visibile in cima a questo documento.</p>
 
-<h2>11. Limitazioni del servizio</h2>
+<h2>12. Limitazioni del servizio</h2>
 <div class="box warn">
   EmailChainGuard è uno strumento di supporto alla sicurezza. <strong>Non sostituisce il giudizio umano</strong> e non garantisce il rilevamento di tutti i tentativi di attacco. In caso di dubbio sull'autenticità di un'email, verifica sempre con il presunto mittente attraverso un canale alternativo (telefono, video chiamata).
 </div>
@@ -198,11 +232,15 @@
 </ul>
 <p>This data is used exclusively to perform WHOIS, DNS and domain reputation checks. <strong>It is not permanently stored.</strong> Temporary server logs (up to 7 days) contain only technical metadata (timestamp, HTTP status code).</p>
 
+<h3>2.2.2 Data sent to the error monitoring service</h3>
+<p>When the plugin encounters a technical error (crash, unhandled exception, failure of calls to the backend or to Microsoft Graph), it automatically sends to <strong>Sentry</strong> a stack trace and some metadata so we can diagnose and fix it. See <a href="#error-monitoring-en">section 10</a> for full details. This feature is enabled by default but you can disable it from the plugin settings.</p>
+
 <h3>2.3 Data requested from Microsoft Graph (optional)</h3>
 <p>If you have enabled the "Full conversation reading" feature, the plugin asks Microsoft Graph for metadata of previous emails in the same thread (senders, CCs, subject, date). This data is processed only in your browser and never sent to our server.</p>
 
 <h2>3. Legal basis for processing</h2>
 <p>Processing of domain data is based on <strong>legitimate interest</strong> (art. 6.1.f GDPR): to protect you and your organization from fraud attempts and BEC attacks. Microsoft Graph activation is instead based on your <strong>explicit consent</strong> (art. 6.1.a GDPR), revocable at any time from the plugin settings.</p>
+<p><strong>Error monitoring</strong> (see <a href="#error-monitoring-en">section 10</a>) is also based on <strong>legitimate interest</strong> (art. 6.1.f GDPR): keeping the plugin secure and functional. You can exercise your <strong>right to object</strong> (art. 21 GDPR) at any time by disabling the toggle in the settings, or by emailing our support address.</p>
 
 <h2>4. Data retention</h2>
 <ul>
@@ -219,6 +257,7 @@
   <li><strong>VirusTotal</strong> (<a href="https://www.virustotal.com/" target="_blank" rel="noopener">privacy policy</a>) – for domain reputation</li>
   <li><strong>Google Safe Browsing</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) – for malicious URL checks</li>
   <li><strong>Umami Cloud</strong> (<a href="https://umami.is/privacy" target="_blank" rel="noopener">privacy policy</a>) – aggregated usage statistics, <strong>only if you have given explicit consent</strong> in the plugin settings. Servers hosted in the EU. No cookies, no persistent identifiers, no personal data.</li>
+  <li><strong>Sentry GmbH</strong> (<a href="https://sentry.io/privacy/" target="_blank" rel="noopener">privacy policy</a>) – technical error monitoring of the plugin. Servers hosted in the EU (Frankfurt). Stack traces and technical metadata anonymized client-side before sending. Enabled by default under legitimate interest (art. 6.1.f), opt-out available in the plugin settings.</li>
 </ul>
 <p>We do not share personal data with advertisers, data brokers or other third parties for commercial purposes.</p>
 
@@ -255,10 +294,39 @@
 </ul>
 <p><strong>We never collect:</strong> email addresses, senders, email subjects, analyzed domains, full IP addresses, cookies, browser fingerprints, persistent user identifiers. Umami does not use cookies and does not track individual users across sessions.</p>
 
-<h2>10. Changes to this policy</h2>
+<h2 id="error-monitoring-en">10. Error monitoring</h2>
+<p>To keep the plugin secure and functional, technical errors (JavaScript crashes, unhandled exceptions, failures of calls to the backend or to Microsoft Graph) are automatically sent to the error monitoring service <strong>Sentry</strong> (EU-hosted servers — Frankfurt). This feature is <strong>enabled by default</strong> on the basis of <strong>legitimate interest</strong> (art. 6.1.f GDPR) and you can disable it at any time from the plugin settings ("Error monitoring" toggle), exercising your <strong>right to object</strong> (art. 21 GDPR).</p>
+<p>When monitoring is active, we only collect the following technical data:</p>
+<ul>
+  <li><strong>Stack trace</strong> of the error (file, line, column, function name)</li>
+  <li><strong>Type and message</strong> of the exception (after automatic scrubbing of sensitive strings)</li>
+  <li><strong>Plugin version</strong>, interface language, logical phase in which the error occurred (e.g. "oauth_dialog_message_parse", "backend_analyze_timeout")</li>
+  <li>Browser <strong>user-agent</strong> and event timestamp</li>
+  <li>Technical <strong>breadcrumbs</strong> (sequence of events that preceded the error, e.g. button clicks, fetch to the backend), <strong>also scrubbed</strong></li>
+</ul>
+<p>Before sending, the plugin performs <strong>aggressive automatic client-side scrubbing</strong> that removes:</p>
+<ul>
+  <li>Email addresses (replaced with <code>[redacted-email]</code>)</li>
+  <li>JWT and Bearer tokens from Microsoft Graph (replaced with <code>[redacted-token]</code>)</li>
+  <li>Opaque Graph message and conversation IDs (replaced with <code>[redacted-graph-id]</code>)</li>
+  <li><code>Authorization</code>, <code>Cookie</code> headers and our API key (removed entirely)</li>
+  <li>HTTP request bodies (removed: they may contain the list of analyzed domains)</li>
+  <li>Any event or breadcrumb related to the OAuth flow (URLs <code>login.microsoftonline.com</code>, <code>auth-callback.html</code>) is <strong>dropped entirely</strong></li>
+</ul>
+<p>Furthermore, Sentry is configured with:</p>
+<ul>
+  <li><strong>sendDefaultPii: false</strong> — no user IP, cookies, or identifying headers are sent</li>
+  <li><strong>Session Replay disabled</strong> — no DOM or click recording</li>
+  <li><strong>Performance tracing disabled</strong> — no traces of visited pages or requested URLs</li>
+  <li><strong>Profiling disabled</strong> — no browser performance profiling</li>
+  <li><strong>Console capture disabled</strong> — <code>console.log</code> messages are never sent</li>
+</ul>
+<p>The collected data is retained by Sentry for a maximum of <strong>30 days</strong> (Developer plan retention), then automatically deleted. It is used exclusively to diagnose and fix bugs. It is never used for profiling, marketing, or third parties.</p>
+
+<h2>11. Changes to this policy</h2>
 <p>Any substantial updates will be notified through the plugin itself and through the "What's new" page in the settings. The date of last update is always visible at the top of this document.</p>
 
-<h2>11. Service limitations</h2>
+<h2>12. Service limitations</h2>
 <div class="box warn">
   EmailChainGuard is a security support tool. <strong>It does not replace human judgment</strong> and does not guarantee detection of all attack attempts. If in doubt about the authenticity of an email, always verify with the presumed sender through an alternative channel (phone, video call).
 </div>
@@ -288,11 +356,16 @@ function setLang(lang) {
   if (param === 'it' || param === 'en') lang = param;
   setLang(lang);
   // setLang() resetta lo scroll: re-applica l'anchor del fragment.
-  // In modalita' EN, il link #analytics (puntato dal plugin) va rimappato a #analytics-en
-  // perche' gli heading delle due lingue convivono nel DOM con ID distinti.
+  // In modalita' EN, gli anchor del plugin (#analytics, #error-monitoring) vanno
+  // rimappati ai relativi heading EN perche' i due alberi lingua convivono nel
+  // DOM con ID distinti.
   const hash = window.location.hash;
   if (hash) {
-    const targetId = (hash === '#analytics' && lang === 'en') ? 'analytics-en' : hash.slice(1);
+    let targetId = hash.slice(1);
+    if (lang === 'en') {
+      if (hash === '#analytics')        targetId = 'analytics-en';
+      else if (hash === '#error-monitoring') targetId = 'error-monitoring-en';
+    }
     const target = document.getElementById(targetId);
     if (target) target.scrollIntoView();
   }
