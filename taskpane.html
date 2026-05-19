@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>EmailChainGuard</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  
+  <script src="https://browser.sentry-cdn.com/8.55.0/bundle.min.js"
+          integrity="sha384-BlRl+vkcjdIA/AKRb8zWtiqlVVXepUsSv0+vho7ZMUTsNudEyQjGUKo9W86Hc1EC"
+          crossorigin="anonymous"></script>
+  <script src="sentry-init.js"></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -355,6 +359,12 @@
           <div class="setting-section-title" data-i18n="set_graph">Lettura conversazione completa</div>
           <div class="setting-section-desc" data-i18n="set_graph_desc">Permette al plugin di leggere le email precedenti per rilevare nuovi CC</div>
           <button class="btn btn-secondary" id="btn-graph-toggle"><span data-i18n="state_label">Stato</span>: <span id="graph-status">non attivata</span></button>
+        </div>
+        <div class="setting-section">
+          <div class="setting-section-title" data-i18n="set_errors">Monitoraggio errori</div>
+          <div class="setting-section-desc" data-i18n="set_errors_desc">Invia automaticamente al nostro sistema di monitoraggio i crash e gli errori tecnici del plugin, in modo da poterli correggere rapidamente. Dati anonimizzati, nessuna email, nessun dominio. Attivo di default.</div>
+          <button class="btn btn-secondary" id="btn-errors-toggle"><span data-i18n="state_label">Stato</span>: <span id="errors-status">attivato</span></button>
+          <a href="https://pier-coder.github.io/emailchainguard-frontend/privacy.html#error-monitoring" target="_blank" rel="noopener" id="link-errors" style="display:block;margin-top:6px;color:var(--accent);font-family:var(--mono);font-size:11px" data-i18n="set_errors_link">Cosa raccogliamo</a>
         </div>
         <div class="setting-section">
           <div class="setting-section-title" data-i18n="set_analytics">Aiutaci a migliorare il prodotto</div>

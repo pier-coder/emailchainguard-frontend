@@ -30,6 +30,7 @@ const KEY_OWN_DOMAINS   = 'ecg_own_domains_v4';
 const KEY_LANG          = 'ecg_lang_v4';
 const KEY_GRAPH_ENABLED = 'ecg_graph_enabled_v4';
 const KEY_ANALYTICS_CONSENT = 'ecg_analytics_consent_v4';
+const KEY_ERROR_MONITORING  = 'ecg_error_monitoring_v4';
 
 // Cache memoria
 const _cache = {
@@ -92,6 +93,11 @@ const I18N = {
     'btn_reset':         'Cancella memoria mittenti',
     'set_graph':         'Lettura conversazione completa',
     'set_graph_desc':    'Permette al plugin di leggere le email precedenti per rilevare nuovi CC',
+    'set_errors':        'Monitoraggio errori',
+    'set_errors_desc':   'Invia automaticamente al nostro sistema di monitoraggio i crash e gli errori tecnici del plugin, in modo da poterli correggere rapidamente. Dati anonimizzati, nessuna email, nessun dominio. Attivo di default.',
+    'set_errors_link':   'Cosa raccogliamo',
+    'btn_errors_grant':  'disattivato',
+    'btn_errors_revoke': 'attivato',
     'set_analytics':     'Aiutaci a migliorare il prodotto',
     'set_analytics_desc':'Invia statistiche d\'uso anonime e aggregate. Nessun dato personale, nessun indirizzo email, nessun dominio analizzato.',
     'set_analytics_link':'Cosa raccogliamo',
@@ -165,6 +171,11 @@ const I18N = {
     'btn_reset':         'Clear sender memory',
     'set_graph':         'Full conversation reading',
     'set_graph_desc':    'Allows the plugin to read previous emails to detect new CCs',
+    'set_errors':        'Error monitoring',
+    'set_errors_desc':   'Automatically sends crashes and technical errors of the plugin to our monitoring system so we can fix them quickly. Anonymized data, no email addresses, no domains. Enabled by default.',
+    'set_errors_link':   'What we collect',
+    'btn_errors_grant':  'disabled',
+    'btn_errors_revoke': 'enabled',
     'set_analytics':     'Help us improve the product',
     'set_analytics_desc':'Send anonymous, aggregated usage statistics. No personal data, no email addresses, no analyzed domains.',
     'set_analytics_link':'What we collect',
@@ -215,12 +226,19 @@ function applyI18n() {
   if (lt) lt.href = `https://pier-coder.github.io/emailchainguard-frontend/terms.html?lang=${_state.lang}`;
   const la = document.getElementById('link-analytics');
   if (la) la.href = `https://pier-coder.github.io/emailchainguard-frontend/privacy.html?lang=${_state.lang}#analytics`;
+  const le = document.getElementById('link-errors');
+  if (le) le.href = `https://pier-coder.github.io/emailchainguard-frontend/privacy.html?lang=${_state.lang}#error-monitoring`;
 }
 function t(key) { return I18N[_state.lang]?.[key] || I18N.it[key] || key; }
 
 // Helper analytics: no-op se modulo non caricato o consenso revocato
 function _track(event, props) {
   try { if (window.ECGAnalytics) window.ECGAnalytics.track(event, props); } catch {}
+}
+
+// Helper Sentry: no-op se modulo non inizializzato o monitoraggio disabilitato
+function _captureException(err, context) {
+  try { if (window.ECGSentry) window.ECGSentry.captureException(err, context); } catch {}
 }
 
 // ────────────────────────────────────────────────────────────
@@ -438,6 +456,7 @@ function enableGraph() {
           }
         } catch (e) {
           _state.lastGraphError = 'parse err: ' + e.message + ' | raw=' + (arg.message || '').substring(0, 80);
+          _captureException(e, { phase: 'oauth_dialog_message_parse' });
           resolved = true;
           dialog.close();
           reject(e);
@@ -500,9 +519,11 @@ function _silentRefreshToken() {
         cleanup();
         _saveToken(parsed.access_token, parseInt(parsed.expires_in || '3600', 10)).then(() => resolve(true));
       } else if (parsed.error) {
+        const err = new Error(parsed.error_description || parsed.error);
+        _captureException(err, { phase: 'silent_refresh_error', error_code: parsed.error });
         resolved = true;
         cleanup();
-        reject(new Error(parsed.error_description || parsed.error));
+        reject(err);
       }
     }
 
@@ -510,7 +531,9 @@ function _silentRefreshToken() {
       if (!resolved) {
         resolved = true;
         cleanup();
-        reject(new Error('refresh timeout (5s)'));
+        const err = new Error('refresh timeout (5s)');
+        _captureException(err, { phase: 'silent_refresh_timeout' });
+        reject(err);
       }
     }, 5000);
 
@@ -552,6 +575,11 @@ async function fetchConversationCC(conversationId, currentCreatedISO, currentSub
       let errBody = '';
       try { errBody = (await resp.text()).substring(0, 200); } catch {}
       _state.lastGraphError = `HTTP${resp.status}: ${errBody}`;
+      // Cattura solo errori inaspettati (5xx o 4xx non-auth). 401/403 sono attesi
+      // a token scaduto e gestiti dal flow di refresh — non vale la pena loggarli.
+      if (resp.status >= 500 || (resp.status >= 400 && resp.status !== 401 && resp.status !== 403)) {
+        _captureException(new Error(`Graph fetch HTTP ${resp.status}`), { phase: 'graph_conversation_fetch', status: resp.status });
+      }
       return null;
     }
     const data = await resp.json();
@@ -604,6 +632,7 @@ async function fetchConversationCC(conversationId, currentCreatedISO, currentSub
     return { ccs, hasPrior: priorMessages.length > 0, source };
   } catch (e) {
     _state.lastGraphError = 'exception: ' + (e.message || e.toString()).substring(0, 200);
+    _captureException(e, { phase: 'graph_conversation_fetch_exception' });
     return null;
   }
 }
@@ -614,6 +643,13 @@ async function fetchConversationCC(conversationId, currentCreatedISO, currentSub
 Office.onReady(async info => {
   if (info.host !== Office.HostType.Outlook) return;
   loadSettings();
+
+  // Bootstrap error monitoring (default ON, opt-OUT). Lo iniziamo PRIMA possibile
+  // cosi' Sentry intercetta gli errori del resto del boot.
+  if (_storageGet(KEY_ERROR_MONITORING) !== 'denied' && window.ECGSentry) {
+    window.ECGSentry.init();
+  }
+
   applyI18n();
   setupUI();
 
@@ -719,6 +755,7 @@ function setupUI() {
   });
   document.getElementById('btn-reset-memory').addEventListener('click', resetMemory);
   document.getElementById('btn-graph-toggle').addEventListener('click', toggleGraph);
+  document.getElementById('btn-errors-toggle').addEventListener('click', toggleErrorMonitoring);
   document.getElementById('btn-analytics-toggle').addEventListener('click', toggleAnalytics);
 
   // Segnalazioni / suggerimenti / contatti — apre client email con mailto precompilato
@@ -914,7 +951,12 @@ async function callBackend(domains, conversationId) {
     }
     return resp.json();
   } catch (err) {
-    if (err.name === 'AbortError') throw new Error('Analisi scaduta (15s)');
+    if (err.name === 'AbortError') {
+      const timeoutErr = new Error('Analisi scaduta (15s)');
+      _captureException(timeoutErr, { phase: 'backend_analyze_timeout' });
+      throw timeoutErr;
+    }
+    _captureException(err, { phase: 'backend_analyze_exception' });
     throw err;
   } finally {
     clearTimeout(timer);
@@ -1170,6 +1212,12 @@ function renderSettings() {
     const granted = _storageGet(KEY_ANALYTICS_CONSENT) === 'granted';
     aStatus.textContent = granted ? t('btn_analytics_revoke') : t('btn_analytics_grant');
   }
+  // Error monitoring status (default ON: assenza valore = attivo)
+  const eStatus = document.getElementById('errors-status');
+  if (eStatus) {
+    const active = _storageGet(KEY_ERROR_MONITORING) !== 'denied';
+    eStatus.textContent = active ? t('btn_errors_revoke') : t('btn_errors_grant');
+  }
 }
 
 function addOwnDomain() {
@@ -1218,6 +1266,24 @@ async function toggleGraph() {
       document.getElementById('graph-status').textContent = t('graph_error') + ': ' + detail.substring(0, 60);
     }
   }
+}
+
+function toggleErrorMonitoring() {
+  // Default = ON (assenza valore => attivo). Toggle imposta esplicitamente
+  // 'granted' o 'denied' nello storage. Su revoca chiama Sentry.close().
+  const denied = _storageGet(KEY_ERROR_MONITORING) === 'denied';
+  if (denied) {
+    // Riattiva
+    _storageSet(KEY_ERROR_MONITORING, 'granted');
+    if (window.ECGSentry) window.ECGSentry.init();
+    _track('error_monitoring_changed', { granted: true });
+  } else {
+    // Disattiva: ferma la cattura via Sentry.close() PRIMA di marcare denied
+    _track('error_monitoring_changed', { granted: false });
+    if (window.ECGSentry) window.ECGSentry.close();
+    _storageSet(KEY_ERROR_MONITORING, 'denied');
+  }
+  renderSettings();
 }
 
 function toggleAnalytics() {
