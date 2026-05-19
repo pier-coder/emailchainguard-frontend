@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Privacy Policy · EmailChainGuard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e14; --surface:#11161e; --border:#1f2733;
+    --text:#e6edf3; --muted:#7d8590; --accent:#2f81f7;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  body{padding:48px 24px;max-width:780px;margin:0 auto}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{margin-bottom:40px;border-bottom:1px solid var(--border);padding-bottom:24px}
+  .top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+  .badge{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;color:var(--muted)}
+  .badge-dot{width:24px;height:24px;background:linear-gradient(135deg,#2f81f7,#1f6feb);border-radius:5px;display:flex;align-items:center;justify-content:center}
+  .badge-dot svg{width:13px;height:13px;fill:#fff}
+  .lang-switch{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);padding:3px;border-radius:6px}
+  .lang-switch button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:var(--muted);padding:4px 10px;border-radius:4px;font-size:12px;font-weight:500;transition:all .15s}
+  .lang-switch button.active{background:var(--accent);color:#fff}
+  h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+  .lead{color:var(--muted);font-size:15px}
+  .updated{margin-top:18px;font-size:12px;color:var(--muted);font-family:monospace}
+  h2{font-size:20px;font-weight:600;margin-top:40px;margin-bottom:14px;color:#fff}
+  h3{font-size:16px;font-weight:600;margin-top:24px;margin-bottom:10px;color:var(--text)}
+  p{margin-bottom:14px;color:var(--text)}
+  ul{margin:8px 0 16px 24px}
+  li{margin-bottom:8px;color:var(--text)}
+  strong{color:#fff;font-weight:600}
+  code{font-family:monospace;font-size:13px;background:var(--surface);padding:2px 6px;border-radius:3px;color:#79c0ff}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 22px;margin:18px 0}
+  .box.warn{border-color:#3d2800;background:#1c1505;color:#e3b341}
+  .box.info{border-color:#1e3a5f;background:#0c1a2e;color:#79c0ff}
+  footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;text-align:center}
+  .nav{font-size:13px}
+  .nav a{color:var(--muted)}
+  .lang-en{display:none}
+  body[data-lang="en"] .lang-it{display:none}
+  body[data-lang="en"] .lang-en{display:block}
+  body[data-lang="en"] li.lang-en,
+  body[data-lang="en"] span.lang-en,
+  body[data-lang="en"] a.lang-en{display:inline}
+</style>
+</head>
+<body data-lang="it">
+<header>
+  <div class="top-row">
+    <div class="nav"><a href="./">← EmailChainGuard</a></div>
+    <div class="lang-switch">
+      <button onclick="setLang('it')" id="btn-it" class="active">Italiano</button>
+      <button onclick="setLang('en')" id="btn-en">English</button>
+    </div>
+  </div>
+  <div class="badge">
+    <div class="badge-dot">
+      <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 4.5 3.4 8.7 8 10 4.6-1.3 8-5.5 8-10V5l-8-3z" fill="rgba(255,255,255,.12)" stroke="#fff" stroke-width="1.4"/><circle cx="9" cy="10.5" r="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><circle cx="12.6" cy="13.5" r="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><circle cx="15" cy="10" r="1.8" fill="none" stroke="#fff" stroke-width="1.4"/></svg>
+    </div>
+    <span class="lang-it">EmailChainGuard · Documenti legali</span>
+    <span class="lang-en">EmailChainGuard · Legal documents</span>
+  </div>
+  <h1>Privacy Policy</h1>
+  <p class="lead lang-it">Come gestiamo i tuoi dati quando usi EmailChainGuard.</p>
+  <p class="lead lang-en">How we handle your data when you use EmailChainGuard.</p>
+  <div class="updated lang-it">Ultimo aggiornamento: maggio 2026</div>
+  <div class="updated lang-en">Last updated: May 2026</div>
+</header>
+
+<!-- ─────── ITALIANO ─────── -->
+<div class="lang-it">
+<div class="box info">
+  <strong>In sintesi:</strong> EmailChainGuard analizza le email che apri direttamente nel tuo browser/dispositivo. Al nostro server inviamo solo i nomi di dominio (mai email complete), per verificarne reputazione e configurazione tecnica. Tutti gli altri dati (mittenti conosciuti, conversazioni, preferenze) restano nel tuo profilo Microsoft 365.
+</div>
+
+<h2>1. Chi siamo</h2>
+<p>EmailChainGuard ("noi", "il servizio") è un add-in per Microsoft Outlook progettato per rilevare tentativi di spoofing del dominio e impersonificazione nelle email. Questa policy descrive come trattiamo i dati personali ai sensi del Regolamento UE 2016/679 (GDPR).</p>
+<p>Per domande o richieste: <a href="mailto:support@emailchainguard.example">support@emailchainguard.example</a></p>
+
+<h2>2. Quali dati raccogliamo</h2>
+
+<h3>2.1 Dati che restano sul tuo dispositivo</h3>
+<p>I seguenti dati sono memorizzati esclusivamente nel tuo profilo Microsoft 365 (Roaming Settings) o nel browser (localStorage). <strong>Non vengono mai inviati ai nostri server</strong>:</p>
+<ul>
+  <li>Indirizzi email dei mittenti con cui hai già scambiato messaggi</li>
+  <li>Partecipanti delle conversazioni email (per il rilevamento di nuovi CC)</li>
+  <li>Domini della tua organizzazione configurati nelle impostazioni</li>
+  <li>Preferenze utente (lingua, attivazione funzioni)</li>
+  <li>Token di accesso a Microsoft Graph (se hai attivato la lettura conversazione completa)</li>
+</ul>
+
+<h3>2.2 Dati inviati al nostro server di analisi</h3>
+<p>Quando apri un'email, il plugin invia al nostro backend solo:</p>
+<ul>
+  <li><strong>I nomi di dominio</strong> presenti nell'email (es. <code>esempio.com</code>) — mai indirizzi email completi</li>
+  <li>Un identificativo opaco della conversazione (non collegabile alla tua identità)</li>
+</ul>
+<p>Questi dati sono utilizzati esclusivamente per eseguire i controlli WHOIS, DNS e reputazione del dominio. <strong>Non vengono salvati permanentemente.</strong> I log temporanei del server (fino a 7 giorni) contengono solo metadati tecnici (timestamp, codice di stato HTTP).</p>
+
+<h3>2.3 Dati richiesti a Microsoft Graph (opzionale)</h3>
+<p>Se hai attivato la funzione "Lettura conversazione completa", il plugin chiede a Microsoft Graph i metadati delle email precedenti dello stesso thread (mittenti, CC, oggetto, data). Questi dati vengono elaborati solo nel tuo browser e mai inviati al nostro server.</p>
+
+<h2>3. Base giuridica del trattamento</h2>
+<p>Il trattamento dei dati di dominio è basato sull'<strong>interesse legittimo</strong> (art. 6.1.f GDPR): proteggere te e la tua organizzazione da tentativi di frode e attacchi BEC. L'attivazione di Microsoft Graph è invece basata sul tuo <strong>consenso esplicito</strong> (art. 6.1.a GDPR), revocabile in qualsiasi momento dalle impostazioni del plugin.</p>
+
+<h2>4. Conservazione dei dati</h2>
+<ul>
+  <li><strong>Dati locali:</strong> conservati nel tuo profilo finché non li elimini con "Cancella memoria mittenti" o disinstalli l'add-in</li>
+  <li><strong>Log del server:</strong> max 7 giorni, poi cancellazione automatica</li>
+  <li><strong>Token Graph:</strong> validi al massimo 1 ora, rinnovati silenziosamente quando autorizzato</li>
+</ul>
+
+<h2>5. Condivisione con terze parti</h2>
+<p>Per analizzare i domini, il backend interroga i seguenti servizi esterni, ai quali vengono comunicati esclusivamente i nomi di dominio (mai email o dati personali):</p>
+<ul>
+  <li><strong>WHOIS registries</strong> – per la data di registrazione del dominio</li>
+  <li><strong>Server DNS pubblici</strong> – per verificare record MX, SPF, DMARC</li>
+  <li><strong>VirusTotal</strong> (<a href="https://www.virustotal.com/" target="_blank" rel="noopener">privacy policy</a>) – per la reputazione del dominio</li>
+  <li><strong>Google Safe Browsing</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) – per il check su URL malevoli</li>
+</ul>
+<p>Non condividiamo dati personali con inserzionisti, broker di dati o altre terze parti per scopi commerciali.</p>
+
+<h2>6. Trasferimenti extra-UE</h2>
+<p>Il nostro server è ospitato presso fornitori cloud con data center in Europa (Render.com – Frankfurt). VirusTotal e Google Safe Browsing sono servizi statunitensi: i loro trasferimenti sono coperti dalle <em>Standard Contractual Clauses</em> della Commissione Europea.</p>
+
+<h2>7. I tuoi diritti</h2>
+<p>In qualsiasi momento puoi esercitare i seguenti diritti:</p>
+<ul>
+  <li><strong>Accesso:</strong> sapere quali dati abbiamo (per il server: praticamente nessuno, vista la non conservazione)</li>
+  <li><strong>Cancellazione:</strong> cancellare la memoria locale dalle impostazioni del plugin</li>
+  <li><strong>Revoca consenso:</strong> disattivare Microsoft Graph dalle impostazioni</li>
+  <li><strong>Portabilità:</strong> i tuoi dati sono già nel tuo profilo Microsoft, esportabili tramite Outlook</li>
+  <li><strong>Reclamo:</strong> all'Autorità Garante per la Protezione dei Dati Personali (<a href="https://www.garanteprivacy.it/" target="_blank" rel="noopener">garanteprivacy.it</a>)</li>
+</ul>
+
+<h2>8. Sicurezza</h2>
+<p>Tutte le comunicazioni tra il plugin e il backend avvengono in HTTPS con TLS 1.2+. L'accesso al backend richiede un'API key. Il token Microsoft Graph è memorizzato solo nel tuo profilo Microsoft 365 e non lascia mai il tuo dispositivo.</p>
+
+<h2>9. Cookie</h2>
+<p>EmailChainGuard <strong>non utilizza cookie</strong>. La memorizzazione delle preferenze avviene tramite Microsoft Roaming Settings e localStorage del browser, che non sono cookie e non sono utilizzati per profilazione.</p>
+
+<h2>10. Modifiche a questa policy</h2>
+<p>Eventuali aggiornamenti sostanziali saranno notificati tramite il plugin stesso e tramite la pagina "Cosa c'è di nuovo" nelle impostazioni. La data di ultimo aggiornamento è sempre visibile in cima a questo documento.</p>
+
+<h2>11. Limitazioni del servizio</h2>
+<div class="box warn">
+  EmailChainGuard è uno strumento di supporto alla sicurezza. <strong>Non sostituisce il giudizio umano</strong> e non garantisce il rilevamento di tutti i tentativi di attacco. In caso di dubbio sull'autenticità di un'email, verifica sempre con il presunto mittente attraverso un canale alternativo (telefono, video chiamata).
+</div>
+</div>
+
+<!-- ─────── ENGLISH ─────── -->
+<div class="lang-en">
+<div class="box info">
+  <strong>In short:</strong> EmailChainGuard analyzes the emails you open directly in your browser/device. To our server we only send domain names (never full emails), to check their reputation and technical configuration. All other data (known senders, conversations, preferences) stays in your Microsoft 365 profile.
+</div>
+
+<h2>1. Who we are</h2>
+<p>EmailChainGuard ("we", "the service") is a Microsoft Outlook add-in designed to detect domain spoofing and impersonation attempts in emails. This policy describes how we process personal data under EU Regulation 2016/679 (GDPR).</p>
+<p>For questions or requests: <a href="mailto:support@emailchainguard.example">support@emailchainguard.example</a></p>
+
+<h2>2. What data we collect</h2>
+
+<h3>2.1 Data that stays on your device</h3>
+<p>The following data is stored exclusively in your Microsoft 365 profile (Roaming Settings) or in the browser (localStorage). <strong>It is never sent to our servers</strong>:</p>
+<ul>
+  <li>Email addresses of senders you have already exchanged messages with</li>
+  <li>Participants in email conversations (for new CC detection)</li>
+  <li>Your organization's domains configured in the settings</li>
+  <li>User preferences (language, feature activation)</li>
+  <li>Microsoft Graph access tokens (if you have enabled full conversation reading)</li>
+</ul>
+
+<h3>2.2 Data sent to our analysis server</h3>
+<p>When you open an email, the plugin sends to our backend only:</p>
+<ul>
+  <li><strong>The domain names</strong> present in the email (e.g. <code>example.com</code>) — never full email addresses</li>
+  <li>An opaque conversation identifier (not linkable to your identity)</li>
+</ul>
+<p>This data is used exclusively to perform WHOIS, DNS and domain reputation checks. <strong>It is not permanently stored.</strong> Temporary server logs (up to 7 days) contain only technical metadata (timestamp, HTTP status code).</p>
+
+<h3>2.3 Data requested from Microsoft Graph (optional)</h3>
+<p>If you have enabled the "Full conversation reading" feature, the plugin asks Microsoft Graph for metadata of previous emails in the same thread (senders, CCs, subject, date). This data is processed only in your browser and never sent to our server.</p>
+
+<h2>3. Legal basis for processing</h2>
+<p>Processing of domain data is based on <strong>legitimate interest</strong> (art. 6.1.f GDPR): to protect you and your organization from fraud attempts and BEC attacks. Microsoft Graph activation is instead based on your <strong>explicit consent</strong> (art. 6.1.a GDPR), revocable at any time from the plugin settings.</p>
+
+<h2>4. Data retention</h2>
+<ul>
+  <li><strong>Local data:</strong> kept in your profile until you delete it with "Clear sender memory" or uninstall the add-in</li>
+  <li><strong>Server logs:</strong> max 7 days, then automatic deletion</li>
+  <li><strong>Graph tokens:</strong> valid for max 1 hour, silently renewed when authorized</li>
+</ul>
+
+<h2>5. Sharing with third parties</h2>
+<p>To analyze domains, the backend queries the following external services, to which only domain names are communicated (never emails or personal data):</p>
+<ul>
+  <li><strong>WHOIS registries</strong> – for the domain registration date</li>
+  <li><strong>Public DNS servers</strong> – to verify MX, SPF, DMARC records</li>
+  <li><strong>VirusTotal</strong> (<a href="https://www.virustotal.com/" target="_blank" rel="noopener">privacy policy</a>) – for domain reputation</li>
+  <li><strong>Google Safe Browsing</strong> (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>) – for malicious URL checks</li>
+</ul>
+<p>We do not share personal data with advertisers, data brokers or other third parties for commercial purposes.</p>
+
+<h2>6. Non-EU transfers</h2>
+<p>Our server is hosted by cloud providers with data centers in Europe (Render.com – Frankfurt). VirusTotal and Google Safe Browsing are US services: their transfers are covered by the European Commission's <em>Standard Contractual Clauses</em>.</p>
+
+<h2>7. Your rights</h2>
+<p>At any time you can exercise the following rights:</p>
+<ul>
+  <li><strong>Access:</strong> know what data we hold (for the server: practically none, given non-retention)</li>
+  <li><strong>Deletion:</strong> clear local memory from the plugin settings</li>
+  <li><strong>Consent withdrawal:</strong> disable Microsoft Graph from the settings</li>
+  <li><strong>Portability:</strong> your data is already in your Microsoft profile, exportable via Outlook</li>
+  <li><strong>Complaint:</strong> to your local Data Protection Authority</li>
+</ul>
+
+<h2>8. Security</h2>
+<p>All communications between the plugin and the backend use HTTPS with TLS 1.2+. Backend access requires an API key. The Microsoft Graph token is stored only in your Microsoft 365 profile and never leaves your device.</p>
+
+<h2>9. Cookies</h2>
+<p>EmailChainGuard <strong>does not use cookies</strong>. Preferences are stored via Microsoft Roaming Settings and browser localStorage, which are not cookies and are not used for profiling.</p>
+
+<h2>10. Changes to this policy</h2>
+<p>Any substantial updates will be notified through the plugin itself and through the "What's new" page in the settings. The date of last update is always visible at the top of this document.</p>
+
+<h2>11. Service limitations</h2>
+<div class="box warn">
+  EmailChainGuard is a security support tool. <strong>It does not replace human judgment</strong> and does not guarantee detection of all attack attempts. If in doubt about the authenticity of an email, always verify with the presumed sender through an alternative channel (phone, video call).
+</div>
+</div>
+
+<footer>
+  <p>EmailChainGuard · <a href="./terms.html"><span class="lang-it">Termini di servizio</span><span class="lang-en">Terms of service</span></a> · <a href="./"><span class="lang-it">Pagina principale</span><span class="lang-en">Home</span></a></p>
+</footer>
+
+<script>
+function setLang(lang) {
+  document.body.setAttribute('data-lang', lang);
+  document.documentElement.setAttribute('lang', lang);
+  document.getElementById('btn-it').classList.toggle('active', lang === 'it');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  try { localStorage.setItem('ecg_doc_lang', lang); } catch {}
+  window.scrollTo(0, 0);
+}
+(function() {
+  let lang = 'it';
+  try {
+    const stored = localStorage.getItem('ecg_doc_lang');
+    if (stored) lang = stored;
+    else if (navigator.language && navigator.language.toLowerCase().startsWith('en')) lang = 'en';
+  } catch {}
+  const param = new URLSearchParams(window.location.search).get('lang');
+  if (param === 'it' || param === 'en') lang = param;
+  setLang(lang);
+})();
+</script>
+</body>
+</html>
