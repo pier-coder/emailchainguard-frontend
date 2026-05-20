@@ -26,23 +26,48 @@
   const REDACTED_TOKEN  = '[redacted-token]';
   const REDACTED_BEARER = 'Bearer [redacted-token]';
   const REDACTED_GRAPH  = '[redacted-graph-id]';
+  const REDACTED_CONV   = '[redacted-conv-id]';
+  const REDACTED_FILTER = '[redacted-filter]';
+  const REDACTED_ID     = '[redacted-id]';
 
-  // Regex centralizzate (riutilizzate da event + breadcrumb)
-  const EMAIL_RE    = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-  const JWT_RE      = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g;
-  const BEARER_RE   = /Bearer\s+[\w.\-+/=]+/gi;
-  const GRAPH_ID_RE = /\b(messages|conversations|users|me)\/[A-Za-z0-9_\-=]+/g;
+  // Regex centralizzate (riutilizzate da event + breadcrumb).
+  // Ordine di applicazione in scrubString: piu' specifiche prima delle generiche.
+  const EMAIL_RE     = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+  const JWT_RE       = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g;
+  const BEARER_RE    = /Bearer\s+[\w.\-+/=]+/gi;
+  // Copre tre forme: "conversationId eq 'X'", "conversationId%20eq%20'X'"
+  // (percent-encoded come appare nei breadcrumb fetch URL), "conversationId=X"
+  const CONV_ID_RE   = /conversationId(?:\s+eq\s+|%20eq%20|=)'?[\w+/=%]+'?/gi;
+  // Intero valore di un $filter OData (belt-and-suspenders: tronca tutto il filtro)
+  const ODATA_FILTER_RE = /\$filter=[^&]+/g;
+  const GRAPH_ID_RE  = /\b(messages|conversations|users|me)\/[A-Za-z0-9_\-=]+/g;
+  // Token opachi base64-like lunghi (es. id message/conversation Exchange).
+  // AGGRESSIVA: applicata SOLO agli URL dei breadcrumb (via scrubUrl), mai al
+  // message principale, per non scrubare hash innocui (es. SHA Git) negli errori.
+  const ID_BASE64_RE = /[A-Za-z0-9+/]{40,}={0,2}/g;
 
   // URL dei flussi OAuth: qualunque evento/breadcrumb che li tocca viene droppato
   const OAUTH_URL_RE = /login\.microsoftonline\.com|auth-callback\.html/i;
 
+  // Scrub standard — usato ovunque (event message, exception, breadcrumb message,
+  // valori dentro deepScrub). Ordine: piu' specifiche prima delle generiche.
   function scrubString(s) {
     if (typeof s !== 'string') return s;
     return s
-      .replace(BEARER_RE, REDACTED_BEARER)
-      .replace(JWT_RE, REDACTED_TOKEN)
-      .replace(EMAIL_RE, REDACTED_EMAIL)
-      .replace(GRAPH_ID_RE, (_m, seg) => seg + '/' + REDACTED_GRAPH);
+      .replace(EMAIL_RE, REDACTED_EMAIL)                                 // 1
+      .replace(JWT_RE, REDACTED_TOKEN)                                   // 2
+      .replace(BEARER_RE, REDACTED_BEARER)                               // 3
+      .replace(CONV_ID_RE, () => 'conversationId=' + REDACTED_CONV)      // 4
+      .replace(ODATA_FILTER_RE, () => '$filter=' + REDACTED_FILTER)      // 5 (fn: niente interpretazione di $)
+      .replace(GRAPH_ID_RE, (_m, seg) => seg + '/' + REDACTED_GRAPH);    // 6
+  }
+
+  // Scrub aggressivo per URL — usato SOLO su breadcrumb.data.url.
+  // Applica scrubString (passi 1-6) poi ID_BASE64_RE (passo 7) che tronca
+  // qualunque token opaco base64-like residuo nell'URL.
+  function scrubUrl(s) {
+    if (typeof s !== 'string') return s;
+    return scrubString(s).replace(ID_BASE64_RE, REDACTED_ID);            // 7
   }
 
   function deepScrub(value, depth) {
@@ -114,8 +139,9 @@
         }
         // URL nel flusso OAuth: droppa interamente il breadcrumb
         if (breadcrumb.data.url && OAUTH_URL_RE.test(breadcrumb.data.url)) return null;
-        if (breadcrumb.data.url) breadcrumb.data.url = scrubString(breadcrumb.data.url);
         breadcrumb.data = deepScrub(breadcrumb.data);
+        // URL: scrub aggressivo aggiuntivo (include ID_BASE64_RE), solo qui nei breadcrumb
+        if (breadcrumb.data.url) breadcrumb.data.url = scrubUrl(breadcrumb.data.url);
       }
       if (breadcrumb.message) breadcrumb.message = scrubString(breadcrumb.message);
     } catch (_e) {
