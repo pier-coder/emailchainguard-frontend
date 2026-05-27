@@ -73,7 +73,8 @@ const I18N = {
     'btn_enable_graph':  'Abilita lettura conversazione completa',
     'privacy_notice':    'I tuoi dati restano nel tuo profilo Outlook · Solo nomi di dominio vengono inviati al server di analisi',
     // Idle
-    'idle_title':        'Email sicura',
+    'idle_title':        'Nessuna anomalia',
+    'idle_subtitle':     'Nessuna anomalia su controlli automatici. Resta vigile sul contenuto del messaggio.',
     // Banner
     'banner_new_title':  'Primo contatto',
     'banner_new_sub':    'Non hai mai ricevuto email da questo mittente',
@@ -153,7 +154,8 @@ const I18N = {
     'btn_start':         'Start',
     'btn_enable_graph':  'Enable full conversation reading',
     'privacy_notice':    'Your data stays in your Outlook profile · Only domain names are sent to the analysis server',
-    'idle_title':        'Email is safe',
+    'idle_title':        'No anomalies',
+    'idle_subtitle':     'No anomalies detected by automated checks. Always review the message content carefully.',
     'banner_new_title':  'First contact',
     'banner_new_sub':    'You have never received emails from this sender',
     'banner_cc_title':   'New CC participant',
