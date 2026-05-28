@@ -135,6 +135,8 @@
     .section-label{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:9px}
     .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
     .domain-list{display:flex;flex-direction:column;gap:6px}
+    .domains-caution{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.5}
+    .domains-caution.visible{display:block}
 
     .dcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;animation:fadeUp .25s ease forwards}
     @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -328,6 +330,7 @@
     <div id="domains">
       <div class="section-label" data-i18n="sec_domains">Domini analizzati</div>
       <div class="domain-list" id="domain-list"></div>
+      <div class="domains-caution" id="domains-caution" data-i18n="domains_caution">Nessuna anomalia su controlli automatici. Resta vigile sul contenuto del messaggio.</div>
     </div>
 
     <!-- Settings -->

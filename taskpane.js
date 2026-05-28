@@ -85,6 +85,10 @@ const I18N = {
     'advice_title':      'Come procedere',
     // Sections
     'sec_domains':       'Domini analizzati',
+    'domains_caution':   'Nessuna anomalia su controlli automatici. Resta vigile sul contenuto del messaggio.',
+    'badge_ok':          'Analizzato',
+    'badge_warning':     'ATTENZIONE',
+    'badge_danger':      'PERICOLO',
     'back_to_analysis':  'Torna all\'analisi',
     'set_language':      'Lingua',
     'set_own_domains':   'Domini della tua organizzazione',
@@ -164,6 +168,10 @@ const I18N = {
     'banner_danger_sub': 'Verify the sender identity before replying',
     'advice_title':      'How to proceed',
     'sec_domains':       'Analyzed domains',
+    'domains_caution':   'No anomalies detected by automated checks. Always review the message content carefully.',
+    'badge_ok':          'Analyzed',
+    'badge_warning':     'WARNING',
+    'badge_danger':      'DANGER',
     'back_to_analysis':  'Back to analysis',
     'set_language':      'Language',
     'set_own_domains':   'Your organization domains',
@@ -1021,6 +1029,13 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
       list.appendChild(card);
     });
     document.getElementById('domains').classList.add('visible');
+    // Riga cautelativa: visibile sse nessun dominio in lista e' suspect.
+    // Se anche solo uno e' ATTENZIONE/PERICOLO, l'utente ha gia' avvisi piu' forti.
+    const cautionEl = document.getElementById('domains-caution');
+    if (cautionEl) {
+      const allClean = overall_label !== 'danger' && overall_label !== 'warning';
+      cautionEl.classList.toggle('visible', allClean);
+    }
     hasContent = true;
   }
 
@@ -1042,7 +1057,8 @@ function buildDomainCard(d) {
   const cardClass = d.is_suspect
     ? (d.risk_label === 'danger' ? 'suspect' : 'warning-card') : 'safe';
   const badgeText = d.is_suspect
-    ? (d.risk_label === 'danger' ? 'PERICOLO' : 'ATTENZIONE') : 'OK';
+    ? (d.risk_label === 'danger' ? t('badge_danger') : t('badge_warning'))
+    : t('badge_ok');
   const scoreColor = d.risk_label === 'danger' ? 'var(--danger)'
     : d.risk_label === 'warning' ? 'var(--warn)' : 'var(--ok)';
 
