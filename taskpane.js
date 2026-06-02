@@ -824,7 +824,7 @@ function resetAnalysis() {
   );
   document.getElementById('advice').classList.remove('visible');
   document.getElementById('domains').classList.remove('visible');
-  document.getElementById('domain-list').innerHTML = '';
+  document.getElementById('domain-list').replaceChildren();
   setDot('');
   setNativeBanner(null);
 }
@@ -1022,7 +1022,7 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
 
   if (domains.length > 0) {
     const list = document.getElementById('domain-list');
-    list.innerHTML = '';
+    list.replaceChildren();
     domains.forEach((d, i) => {
       const card = buildDomainCard(d);
       card.style.animationDelay = `${i * 50}ms`;
@@ -1066,84 +1066,249 @@ function buildDomainCard(d) {
   card.className = `dcard ${cardClass}`;
   const head = document.createElement('div');
   head.className = 'dcard-head';
-  head.innerHTML = `
-    <div class="dc-dot"></div>
-    <div class="dc-domain">@${esc(d.domain)}</div>
-    ${d.is_suspect ? `<div class="dc-score" style="color:${scoreColor}">${Number(d.risk_score)||0}</div>` : ''}
-    <div class="dc-badge">${badgeText}</div>
-    ${d.is_suspect ? '<div class="dc-chevron"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></div>' : ''}
-  `;
+
+  // Pallino di stato (markup statico nostro)
+  const dot = document.createElement('div');
+  dot.className = 'dc-dot';
+  head.appendChild(dot);
+
+  // Nome dominio (DATO ESTERNO) — via textContent: niente HTML interpretato
+  const dom = document.createElement('div');
+  dom.className = 'dc-domain';
+  dom.textContent = '@' + d.domain;
+  head.appendChild(dom);
+
+  // Score (solo per i sospetti, numero coerced)
+  if (d.is_suspect) {
+    const score = document.createElement('div');
+    score.className = 'dc-score';
+    score.style.color = scoreColor;
+    score.textContent = String(Number(d.risk_score) || 0);
+    head.appendChild(score);
+  }
+
+  // Badge (testo i18n nostro)
+  const badge = document.createElement('div');
+  badge.className = 'dc-badge';
+  badge.textContent = badgeText;
+  head.appendChild(badge);
+
+  // Chevron SVG (markup statico nostro, costruito via DOM API SVG per zero innerHTML)
+  if (d.is_suspect) {
+    const chev = document.createElement('div');
+    chev.className = 'dc-chevron';
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', 'M7 10l5 5 5-5z');
+    svg.appendChild(path);
+    chev.appendChild(svg);
+    head.appendChild(chev);
+  }
+
   card.appendChild(head);
 
   if (d.is_suspect) {
     const detail = document.createElement('div');
     detail.className = 'dcard-detail';
-    detail.innerHTML = buildDetailHTML(d);
+    detail.appendChild(buildDetailNode(d));
     card.appendChild(detail);
     head.addEventListener('click', () => card.classList.toggle('open'));
   }
   return card;
 }
 
-function buildDetailHTML(d) {
-  let h = '<div class="dcard-detail-inner">';
+// Costruisce l'Element con i dettagli del dominio sospetto (WHOIS / DNS /
+// Reputazione + diff carattere-per-carattere). Tutti i dati esterni vengono
+// inseriti via textContent — nessun innerHTML, nessuna interpolazione HTML.
+// L'unico attributo "dinamico" e' href del link VirusTotal, che resta blindato
+// dal prefix-check String(rep.vt_link).startsWith('https://www.virustotal.com/').
+function buildDetailNode(d) {
+  // Helper interno: costruisce una <div.detail-row><span.detail-key><span.detail-val>.
+  // valClass e' una nostra classe ('ok'/'danger'/'warn'), non un dato esterno.
+  function row(keyText, valText, valClass) {
+    const r = document.createElement('div');
+    r.className = 'detail-row';
+    const k = document.createElement('span');
+    k.className = 'detail-key';
+    k.textContent = keyText;
+    const v = document.createElement('span');
+    v.className = 'detail-val' + (valClass ? ' ' + valClass : '');
+    v.textContent = valText;
+    r.append(k, v);
+    return r;
+  }
 
+  const inner = document.createElement('div');
+  inner.className = 'dcard-detail-inner';
+
+  // Diff carattere-per-carattere
   if (d.similar_to) {
-    const { a, b } = buildDiff(d.similar_to, d.domain);
-    h += `<div class="diff-block">
-      <div class="detail-title">Confronto carattere per carattere</div>
-      <div class="diff-pair">
-        <div class="diff-line legit"><span class="diff-lbl">LEGIT</span><span class="diff-chars">${a}</span></div>
-        <div class="diff-line fake"><span class="diff-lbl">FAKE?</span><span class="diff-chars">${b}</span></div>
-      </div></div>`;
+    const { aFrag, bFrag } = buildDiff(d.similar_to, d.domain);
+    const block = document.createElement('div');
+    block.className = 'diff-block';
+
+    const title = document.createElement('div');
+    title.className = 'detail-title';
+    title.textContent = 'Confronto carattere per carattere';
+    block.appendChild(title);
+
+    const pair = document.createElement('div');
+    pair.className = 'diff-pair';
+
+    const aLine = document.createElement('div');
+    aLine.className = 'diff-line legit';
+    const aLbl = document.createElement('span');
+    aLbl.className = 'diff-lbl';
+    aLbl.textContent = 'LEGIT';
+    const aChars = document.createElement('span');
+    aChars.className = 'diff-chars';
+    aChars.appendChild(aFrag);
+    aLine.append(aLbl, aChars);
+
+    const bLine = document.createElement('div');
+    bLine.className = 'diff-line fake';
+    const bLbl = document.createElement('span');
+    bLbl.className = 'diff-lbl';
+    bLbl.textContent = 'FAKE?';
+    const bChars = document.createElement('span');
+    bChars.className = 'diff-chars';
+    bChars.appendChild(bFrag);
+    bLine.append(bLbl, bChars);
+
+    pair.append(aLine, bLine);
+    block.appendChild(pair);
+    inner.appendChild(block);
   }
+
+  // WHOIS
   if (d.whois) {
-    const w = d.whois; const ac = w.risk_flag ? 'danger' : 'ok';
-    h += `<div class="detail-block"><div class="detail-title">WHOIS</div>
-      <div class="detail-row"><span class="detail-key">Registrato</span><span class="detail-val ${ac}">${w.creation_date ? new Date(w.creation_date).toLocaleDateString('it-IT') : '—'}</span></div>
-      <div class="detail-row"><span class="detail-key">Eta</span><span class="detail-val ${ac}">${esc(w.age_label||'—')}</span></div>
-      <div class="detail-row"><span class="detail-key">Registrar</span><span class="detail-val">${esc(w.registrar||'—')}</span></div>
-    </div>`;
+    const w = d.whois;
+    const ac = w.risk_flag ? 'danger' : 'ok';
+    const block = document.createElement('div');
+    block.className = 'detail-block';
+    const title = document.createElement('div');
+    title.className = 'detail-title';
+    title.textContent = 'WHOIS';
+    block.appendChild(title);
+    // new Date(any).toLocaleDateString() ritorna sempre una stringa "pulita"
+    // (es. "12/07/2020") o "Invalid Date": nessun HTML possibile by construction.
+    const dateText = w.creation_date
+      ? new Date(w.creation_date).toLocaleDateString('it-IT')
+      : '—';
+    block.appendChild(row('Registrato', dateText, ac));
+    block.appendChild(row('Età', w.age_label || '—', ac));
+    block.appendChild(row('Registrar', w.registrar || '—'));
+    inner.appendChild(block);
   }
+
+  // DNS
   if (d.dns) {
     const dns = d.dns;
-    h += `<div class="detail-block"><div class="detail-title">DNS</div>
-      <div class="detail-row"><span class="detail-key">MX</span><span class="detail-val ${dns.has_mx?'ok':'danger'}">${dns.has_mx?'Presente':'Assente'}</span></div>
-      <div class="detail-row"><span class="detail-key">SPF</span><span class="detail-val ${dns.has_spf?'ok':'danger'}">${dns.has_spf?'Presente':'Assente'}</span></div>
-      <div class="detail-row"><span class="detail-key">DMARC</span><span class="detail-val ${dns.has_dmarc?'ok':'danger'}">${dns.has_dmarc?'Presente':'Assente'}</span></div>
-    </div>`;
+    const block = document.createElement('div');
+    block.className = 'detail-block';
+    const title = document.createElement('div');
+    title.className = 'detail-title';
+    title.textContent = 'DNS';
+    block.appendChild(title);
+    block.appendChild(row('MX',    dns.has_mx    ? 'Presente' : 'Assente', dns.has_mx    ? 'ok' : 'danger'));
+    block.appendChild(row('SPF',   dns.has_spf   ? 'Presente' : 'Assente', dns.has_spf   ? 'ok' : 'danger'));
+    block.appendChild(row('DMARC', dns.has_dmarc ? 'Presente' : 'Assente', dns.has_dmarc ? 'ok' : 'danger'));
+    inner.appendChild(block);
   }
+
+  // Reputazione
   if (d.reputation) {
     const rep = d.reputation;
-    const vtMal = Number(rep.vt_malicious)||0, vtSus = Number(rep.vt_suspicious)||0;
+    const vtMal = Number(rep.vt_malicious) || 0;
+    const vtSus = Number(rep.vt_suspicious) || 0;
     const vtc = vtMal > 0 ? 'danger' : vtSus > 0 ? 'warn' : 'ok';
-    h += `<div class="detail-block"><div class="detail-title">Reputazione</div>`;
+
+    const block = document.createElement('div');
+    block.className = 'detail-block';
+    const title = document.createElement('div');
+    title.className = 'detail-title';
+    title.textContent = 'Reputazione';
+    block.appendChild(title);
+
     if (rep.vt_available) {
-      h += `<div class="detail-row"><span class="detail-key">VirusTotal</span><span class="detail-val ${vtc}">${vtMal} malevoli · ${vtSus} sospetti</span></div>`;
-      if (rep.vt_link && String(rep.vt_link).startsWith('https://www.virustotal.com/'))
-        h += `<div class="detail-row"><span class="detail-key">Report</span><span class="detail-val"><a href="${esc(rep.vt_link)}" target="_blank" rel="noopener noreferrer">Apri</a></span></div>`;
+      block.appendChild(row('VirusTotal', vtMal + ' malevoli · ' + vtSus + ' sospetti', vtc));
+      // Link a VirusTotal: prefix-check rigoroso impedisce javascript:/data: URL.
+      // href settato via property — il browser non interpreta il valore come HTML.
+      if (rep.vt_link && String(rep.vt_link).startsWith('https://www.virustotal.com/')) {
+        const r = document.createElement('div');
+        r.className = 'detail-row';
+        const k = document.createElement('span');
+        k.className = 'detail-key';
+        k.textContent = 'Report';
+        const v = document.createElement('span');
+        v.className = 'detail-val';
+        const a = document.createElement('a');
+        a.href = rep.vt_link;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = 'Apri';
+        v.appendChild(a);
+        r.append(k, v);
+        block.appendChild(r);
+      }
     } else {
-      h += `<div class="detail-row"><span class="detail-key">VirusTotal</span><span class="detail-val" style="color:var(--muted)">non configurata</span></div>`;
+      const r = document.createElement('div');
+      r.className = 'detail-row';
+      const k = document.createElement('span');
+      k.className = 'detail-key';
+      k.textContent = 'VirusTotal';
+      const v = document.createElement('span');
+      v.className = 'detail-val';
+      v.style.color = 'var(--muted)';
+      v.textContent = 'non configurata';
+      r.append(k, v);
+      block.appendChild(r);
     }
-    h += '</div>';
+    inner.appendChild(block);
   }
-  h += '</div>';
-  return h;
+
+  return inner;
 }
 
+// Costruisce due DocumentFragment con il diff carattere-per-carattere fra il
+// dominio legittimo (a) e il dominio fake (b). I caratteri uguali sono nodi di
+// testo "nudi"; i caratteri differenti sono <span class="ch"> con il carattere
+// come textContent. Nessuna interpolazione HTML: anche se un carattere fosse
+// '<' o '>' o '"', verrebbe inserito come puro testo, mai eseguito.
 function buildDiff(legit, fake) {
   const max = Math.max(legit.length, fake.length);
-  let a = '', b = '';
+  const aFrag = document.createDocumentFragment();
+  const bFrag = document.createDocumentFragment();
   for (let i = 0; i < max; i++) {
     const ca = i < legit.length ? legit[i] : '';
     const cb = i < fake.length  ? fake[i]  : '';
-    if (ca === cb) { a += esc(ca); b += esc(cb); }
-    else {
-      a += ca ? `<span class="ch">${esc(ca)}</span>` : '';
-      b += cb ? `<span class="ch">${esc(cb)}</span>` : '<span class="ch">_</span>';
+    if (ca === cb) {
+      if (ca) aFrag.appendChild(document.createTextNode(ca));
+      if (cb) bFrag.appendChild(document.createTextNode(cb));
+    } else {
+      if (ca) {
+        const span = document.createElement('span');
+        span.className = 'ch';
+        span.textContent = ca;
+        aFrag.appendChild(span);
+      }
+      if (cb) {
+        const span = document.createElement('span');
+        span.className = 'ch';
+        span.textContent = cb;
+        bFrag.appendChild(span);
+      } else {
+        // Placeholder per allineamento quando il dominio fake e' piu' corto
+        const span = document.createElement('span');
+        span.className = 'ch';
+        span.textContent = '_';
+        bFrag.appendChild(span);
+      }
     }
   }
-  return { a, b };
+  return { aFrag, bFrag };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1200,24 +1365,34 @@ function renderSettings() {
   const linkT = document.getElementById('link-terms');
   if (linkP) linkP.href = `https://pier-coder.github.io/emailchainguard-frontend/privacy.html?lang=${_state.lang}`;
   if (linkT) linkT.href = `https://pier-coder.github.io/emailchainguard-frontend/terms.html?lang=${_state.lang}`;
-  // Domini propri
+  // Domini propri (DATO ESTERNO: stringhe utente da Settings) — DOM via API,
+  // niente innerHTML, niente template literal interpolati.
   const ownEl = document.getElementById('own-domains');
-  ownEl.innerHTML = '';
+  ownEl.replaceChildren();
   const own = loadOwnDomains();
   if (own.size === 0) {
-    ownEl.innerHTML = `<div style="font-size:10px;color:var(--muted)">${t('no_own_domains')}</div>`;
+    const empty = document.createElement('div');
+    empty.style.fontSize = '10px';
+    empty.style.color = 'var(--muted)';
+    empty.textContent = t('no_own_domains');
+    ownEl.appendChild(empty);
   } else {
     own.forEach(d => {
       const tag = document.createElement('span');
       tag.className = 'domain-tag';
-      tag.innerHTML = `${esc(d)}<span class="domain-tag-x" data-domain="${esc(d)}">×</span>`;
-      tag.querySelector('.domain-tag-x').addEventListener('click', () => {
+      tag.appendChild(document.createTextNode(d));
+      const x = document.createElement('span');
+      x.className = 'domain-tag-x';
+      x.dataset.domain = d; // setter sicuro: nessuna interpretazione HTML
+      x.textContent = '×';
+      x.addEventListener('click', () => {
         const set = loadOwnDomains();
         set.delete(d);
         saveOwnDomains(set);
         _track('own_domain_changed', { action: 'remove', count: set.size });
         renderSettings();
       });
+      tag.appendChild(x);
       ownEl.appendChild(tag);
     });
   }
@@ -1335,6 +1510,16 @@ function setDot(state) {
 function setScanBar(on) {
   document.getElementById('scan-bar').classList.toggle('active', on);
 }
+// HTML escape helper. Dopo il refactor XSS la costruzione del DOM passa per
+// createElement + textContent ovunque siano coinvolti dati esterni, quindi esc()
+// e' "dead code" attivo per design — viene tenuta come difesa-in-profondita'
+// disponibile per qualunque futura reintroduzione di innerHTML.
+// Copre tutti e 5 i caratteri HTML-significativi (incluso ' per attributi single-quoted).
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
