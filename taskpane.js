@@ -89,6 +89,21 @@ const I18N = {
     'badge_ok':          'Analizzato',
     'badge_warning':     'ATTENZIONE',
     'badge_danger':      'PERICOLO',
+    // Domain detail card (espansione al click)
+    'detail_char_compare':   'Confronto carattere per carattere',
+    'detail_legit':          'LEGIT',
+    'detail_fake':           'FAKE?',
+    'detail_registered':     'Registrato',
+    'detail_age':            'Età',
+    'detail_registrar':      'Registrar',
+    'detail_present':        'Presente',
+    'detail_absent':         'Assente',
+    'detail_reputation':     'Reputazione',
+    'detail_malicious':      'malevoli',
+    'detail_suspicious':     'sospetti',
+    'detail_report':         'Report',
+    'detail_open':           'Apri',
+    'detail_not_configured': 'non configurata',
     'back_to_analysis':  'Torna all\'analisi',
     'set_language':      'Lingua',
     'set_own_domains':   'Domini della tua organizzazione',
@@ -172,6 +187,21 @@ const I18N = {
     'badge_ok':          'Analyzed',
     'badge_warning':     'WARNING',
     'badge_danger':      'DANGER',
+    // Domain detail card (espansione al click)
+    'detail_char_compare':   'Character-by-character comparison',
+    'detail_legit':          'LEGIT',
+    'detail_fake':           'FAKE?',
+    'detail_registered':     'Registered',
+    'detail_age':            'Age',
+    'detail_registrar':      'Registrar',
+    'detail_present':        'Present',
+    'detail_absent':         'Absent',
+    'detail_reputation':     'Reputation',
+    'detail_malicious':      'malicious',
+    'detail_suspicious':     'suspicious',
+    'detail_report':         'Report',
+    'detail_open':           'Open',
+    'detail_not_configured': 'not configured',
     'back_to_analysis':  'Back to analysis',
     'set_language':      'Language',
     'set_own_domains':   'Your organization domains',
@@ -1151,7 +1181,7 @@ function buildDetailNode(d) {
 
     const title = document.createElement('div');
     title.className = 'detail-title';
-    title.textContent = 'Confronto carattere per carattere';
+    title.textContent = t('detail_char_compare');
     block.appendChild(title);
 
     const pair = document.createElement('div');
@@ -1161,7 +1191,7 @@ function buildDetailNode(d) {
     aLine.className = 'diff-line legit';
     const aLbl = document.createElement('span');
     aLbl.className = 'diff-lbl';
-    aLbl.textContent = 'LEGIT';
+    aLbl.textContent = t('detail_legit');
     const aChars = document.createElement('span');
     aChars.className = 'diff-chars';
     aChars.appendChild(aFrag);
@@ -1171,7 +1201,7 @@ function buildDetailNode(d) {
     bLine.className = 'diff-line fake';
     const bLbl = document.createElement('span');
     bLbl.className = 'diff-lbl';
-    bLbl.textContent = 'FAKE?';
+    bLbl.textContent = t('detail_fake');
     const bChars = document.createElement('span');
     bChars.className = 'diff-chars';
     bChars.appendChild(bFrag);
@@ -1190,31 +1220,35 @@ function buildDetailNode(d) {
     block.className = 'detail-block';
     const title = document.createElement('div');
     title.className = 'detail-title';
-    title.textContent = 'WHOIS';
+    title.textContent = 'WHOIS';  // nome proprio del protocollo, non tradotto
     block.appendChild(title);
-    // new Date(any).toLocaleDateString() ritorna sempre una stringa "pulita"
-    // (es. "12/07/2020") o "Invalid Date": nessun HTML possibile by construction.
+    // Locale dinamico: en-GB e it-IT producono entrambi DD/MM/YYYY (simmetrico).
+    // toLocaleDateString ritorna sempre una stringa "pulita" — niente HTML by construction.
+    const dateLocale = _state.lang === 'en' ? 'en-GB' : 'it-IT';
     const dateText = w.creation_date
-      ? new Date(w.creation_date).toLocaleDateString('it-IT')
+      ? new Date(w.creation_date).toLocaleDateString(dateLocale)
       : '—';
-    block.appendChild(row('Registrato', dateText, ac));
-    block.appendChild(row('Età', w.age_label || '—', ac));
-    block.appendChild(row('Registrar', w.registrar || '—'));
+    block.appendChild(row(t('detail_registered'), dateText, ac));
+    block.appendChild(row(t('detail_age'), w.age_label || '—', ac));
+    block.appendChild(row(t('detail_registrar'), w.registrar || '—'));
     inner.appendChild(block);
   }
 
   // DNS
   if (d.dns) {
     const dns = d.dns;
+    const present = t('detail_present');
+    const absent  = t('detail_absent');
     const block = document.createElement('div');
     block.className = 'detail-block';
     const title = document.createElement('div');
     title.className = 'detail-title';
-    title.textContent = 'DNS';
+    title.textContent = 'DNS';  // sigla tecnica, non tradotta
     block.appendChild(title);
-    block.appendChild(row('MX',    dns.has_mx    ? 'Presente' : 'Assente', dns.has_mx    ? 'ok' : 'danger'));
-    block.appendChild(row('SPF',   dns.has_spf   ? 'Presente' : 'Assente', dns.has_spf   ? 'ok' : 'danger'));
-    block.appendChild(row('DMARC', dns.has_dmarc ? 'Presente' : 'Assente', dns.has_dmarc ? 'ok' : 'danger'));
+    // MX/SPF/DMARC sono sigle tecniche universali — non tradotte
+    block.appendChild(row('MX',    dns.has_mx    ? present : absent, dns.has_mx    ? 'ok' : 'danger'));
+    block.appendChild(row('SPF',   dns.has_spf   ? present : absent, dns.has_spf   ? 'ok' : 'danger'));
+    block.appendChild(row('DMARC', dns.has_dmarc ? present : absent, dns.has_dmarc ? 'ok' : 'danger'));
     inner.appendChild(block);
   }
 
@@ -1229,11 +1263,13 @@ function buildDetailNode(d) {
     block.className = 'detail-block';
     const title = document.createElement('div');
     title.className = 'detail-title';
-    title.textContent = 'Reputazione';
+    title.textContent = t('detail_reputation');
     block.appendChild(title);
 
     if (rep.vt_available) {
-      block.appendChild(row('VirusTotal', vtMal + ' malevoli · ' + vtSus + ' sospetti', vtc));
+      // Concatenazione: "3 malevoli · 1 sospetti" / "3 malicious · 1 suspicious"
+      const vtSummary = vtMal + ' ' + t('detail_malicious') + ' · ' + vtSus + ' ' + t('detail_suspicious');
+      block.appendChild(row('VirusTotal', vtSummary, vtc));
       // Link a VirusTotal: prefix-check rigoroso impedisce javascript:/data: URL.
       // href settato via property — il browser non interpreta il valore come HTML.
       if (rep.vt_link && String(rep.vt_link).startsWith('https://www.virustotal.com/')) {
@@ -1241,14 +1277,14 @@ function buildDetailNode(d) {
         r.className = 'detail-row';
         const k = document.createElement('span');
         k.className = 'detail-key';
-        k.textContent = 'Report';
+        k.textContent = t('detail_report');
         const v = document.createElement('span');
         v.className = 'detail-val';
         const a = document.createElement('a');
         a.href = rep.vt_link;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
-        a.textContent = 'Apri';
+        a.textContent = t('detail_open');
         v.appendChild(a);
         r.append(k, v);
         block.appendChild(r);
@@ -1258,11 +1294,11 @@ function buildDetailNode(d) {
       r.className = 'detail-row';
       const k = document.createElement('span');
       k.className = 'detail-key';
-      k.textContent = 'VirusTotal';
+      k.textContent = 'VirusTotal';  // nome proprio
       const v = document.createElement('span');
       v.className = 'detail-val';
       v.style.color = 'var(--muted)';
-      v.textContent = 'non configurata';
+      v.textContent = t('detail_not_configured');
       r.append(k, v);
       block.appendChild(r);
     }
