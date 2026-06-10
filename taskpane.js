@@ -31,6 +31,7 @@ const KEY_LANG          = 'ecg_lang_v4';
 const KEY_GRAPH_ENABLED = 'ecg_graph_enabled_v4';
 const KEY_ANALYTICS_CONSENT = 'ecg_analytics_consent_v4';
 const KEY_ERROR_MONITORING  = 'ecg_error_monitoring_v4';
+const KEY_SEED_DONE         = 'ecg_seed_done_v4';
 
 // Cache memoria
 const _cache = {
@@ -55,6 +56,7 @@ const I18N = {
     'domains_analyzed':  'domini analizzati',
     'domain_count':      'domini',
     'reset_done':        'Memoria cancellata',
+    'seeding_memory':    'Inizializzazione memoria mittenti...',
     'graph_active':      'attivata',
     'graph_inactive':    'non attivata',
     'graph_enabling':    'autorizzazione in corso...',
@@ -159,6 +161,7 @@ const I18N = {
     'domains_analyzed':  'domains analyzed',
     'domain_count':      'domains',
     'reset_done':        'Memory cleared',
+    'seeding_memory':    'Initializing sender memory...',
     'graph_active':      'enabled',
     'graph_inactive':    'not enabled',
     'graph_enabling':    'authorizing...',
@@ -489,6 +492,9 @@ function enableGraph() {
             _state.lastGraphError = 'token salvato OK';
             resolved = true;
             dialog.close();
+            // Seeding al successo dell'autorizzazione, fire-and-forget:
+            // non ritarda la resolve attesa dal chiamante
+            setTimeout(() => { checkAndSeed(); }, 1000);
             resolve(true);
           } else if (data.error) {
             _state.lastGraphError = 'dialog err: ' + (data.error_description || data.error).substring(0, 100);
@@ -682,6 +688,93 @@ async function fetchConversationCC(conversationId, currentCreatedISO, currentSub
 }
 
 // ────────────────────────────────────────────────────────────
+//  SEEDING MEMORIA MITTENTI
+//  Al primo avvio con Graph attivo, popola la memoria dei mittenti
+//  conosciuti leggendo le email recenti, per eliminare l'alert fatigue
+//  del "primo contatto" su ogni email del primo giorno.
+// ────────────────────────────────────────────────────────────
+
+// Legge fino a ~500 messaggi recenti via /me/messages (che copre TUTTE le
+// cartelle della mailbox, Posta Inviata inclusa: per le ricevute raccogliamo
+// from + ccRecipients, per le inviate i toRecipients — nessuna query separata
+// su sentitems necessaria). Query senza $filter: stessa shape gia' in
+// produzione nel fallback subject di fetchConversationCC, immune da
+// InefficientFilter. Una sola write a fine raccolta.
+async function seedKnownSenders() {
+  const token = await getGraphToken();
+  if (!token) return { ok: false, count: 0 };
+
+  const myEmail = (Office?.context?.mailbox?.userProfile?.emailAddress || '').toLowerCase() || null;
+  const found = new Set();
+  const MAX_PAGES = 10; // ~500 messaggi: budget rate-limiting Graph
+  let url = 'https://graph.microsoft.com/v1.0/me/messages?$select=from,toRecipients,ccRecipients,receivedDateTime&$orderby=receivedDateTime desc&$top=50';
+  let pages = 0;
+
+  function collect(addr) {
+    const a = addr?.emailAddress?.address?.toLowerCase();
+    if (a && a !== myEmail) found.add(a);
+  }
+
+  try {
+    while (url && pages < MAX_PAGES) {
+      const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (resp.status === 429) break; // rate limit: stop pulito, salvataggio parziale
+      if (!resp.ok) break;
+      const data = await resp.json();
+      (data.value || []).forEach(msg => {
+        collect(msg.from);
+        (msg.toRecipients || []).forEach(collect);
+        (msg.ccRecipients || []).forEach(collect);
+      });
+      url = data['@odata.nextLink'] || null;
+      pages++;
+    }
+  } catch (e) {
+    _captureException(e, { seeding: true, pages_read: pages });
+  }
+
+  if (found.size > 0) {
+    saveKnownSenders([...found]); // singola write (merge + dedup + trim FIFO interni)
+  }
+  return { ok: found.size > 0, count: found.size };
+}
+
+// Trigger del seeding. Chiamata fire-and-forget (mai await dal flusso UI).
+// Il flag KEY_SEED_DONE viene settato anche su seeding PARZIALE (>=1 mittente
+// raccolto): una pagina basta a risolvere l'alert fatigue, e ritentare l'intero
+// seeding a ogni avvio martellerebbe Graph per un beneficio marginale.
+// Resta non settato solo su fallimento totale (zero raccolti) -> retry al
+// prossimo avvio.
+async function checkAndSeed() {
+  try {
+    if (!_state.graphEnabled) return;
+    if (_storageGet(KEY_SEED_DONE) === '1') return;
+    if (loadKnownSenders().size >= 20) {
+      // Memoria gia' avviata: il seeding non serve, marca done per saltare i check futuri
+      _storageSet(KEY_SEED_DONE, '1');
+      return;
+    }
+    // Indicazione discreta nel footer, ripristinata a fine seeding solo se
+    // nessuna scansione l'ha sovrascritta nel frattempo
+    const foot = document.getElementById('foot-status');
+    const prevText = foot ? foot.textContent : '';
+    if (foot) foot.textContent = t('seeding_memory');
+
+    const res = await seedKnownSenders();
+
+    if (foot && foot.textContent === t('seeding_memory')) foot.textContent = prevText;
+    if (res.ok) {
+      _storageSet(KEY_SEED_DONE, '1');
+      const bucket = res.count < 100 ? 'lt100' : res.count <= 500 ? '100-500' : '500plus';
+      _track('seeding_completed', { bucket });
+    }
+  } catch (e) {
+    // Fallimento silenzioso: nessun messaggio all'utente, flag non settato
+    _captureException(e, { seeding: true });
+  }
+}
+
+// ────────────────────────────────────────────────────────────
 //  OFFICE INIT
 // ────────────────────────────────────────────────────────────
 Office.onReady(async info => {
@@ -719,6 +812,11 @@ Office.onReady(async info => {
   } else {
     runScan();
   }
+
+  // Seeding memoria mittenti in background, DOPO la prima scansione
+  // (il delay lascia respirare la runScan iniziale; checkAndSeed esce
+  // subito se Graph e' off, seed gia' fatto o memoria gia' avviata)
+  setTimeout(() => { checkAndSeed(); }, 3000);
   if (Office.context.mailbox.addHandlerAsync) {
     Office.context.mailbox.addHandlerAsync(
       Office.EventType.ItemChanged,
