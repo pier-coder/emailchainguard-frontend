@@ -66,8 +66,8 @@
   <h1>Privacy Policy</h1>
   <p class="lead lang-it">Come gestiamo i tuoi dati quando usi EmailChainGuard.</p>
   <p class="lead lang-en">How we handle your data when you use EmailChainGuard.</p>
-  <div class="updated lang-it">Ultimo aggiornamento: 19 maggio 2026</div>
-  <div class="updated lang-en">Last updated: May 19, 2026</div>
+  <div class="updated lang-it">Ultimo aggiornamento: 10 giugno 2026</div>
+  <div class="updated lang-en">Last updated: June 10, 2026</div>
 </header>
 
 <!-- ─────── ITALIANO ─────── -->
@@ -105,7 +105,7 @@
 <p>Quando il plugin incontra un errore tecnico (crash, eccezione non gestita, fallimento di chiamate al backend o a Microsoft Graph), invia automaticamente a <strong>Sentry</strong> uno stack trace e alcuni metadati per consentirci di diagnosticarlo e correggerlo. Vedi la <a href="#error-monitoring">sezione 10</a> per il dettaglio completo. Questa funzione è attiva di default ma puoi disattivarla dalle impostazioni del plugin.</p>
 
 <h3>2.3 Dati richiesti a Microsoft Graph (opzionale)</h3>
-<p>Se hai attivato la funzione "Lettura conversazione completa", il plugin chiede a Microsoft Graph i metadati delle email precedenti dello stesso thread (mittenti, CC, oggetto, data). Questi dati vengono elaborati solo nel tuo browser e mai inviati al nostro server.</p>
+<p>Se hai attivato la funzione "Lettura conversazione completa", il plugin chiede a Microsoft Graph i metadati (mittenti, destinatari, oggetto, data) delle email precedenti dello stesso thread e, una sola volta all'attivazione, delle email recenti della tua casella, al solo scopo di costruire la memoria locale dei mittenti conosciuti. Questi dati vengono elaborati solo nel tuo browser e mai inviati al nostro server.</p>
 
 <h2>3. Base giuridica del trattamento</h2>
 <p>Il trattamento dei dati di dominio è basato sull'<strong>interesse legittimo</strong> (art. 6.1.f GDPR): proteggere te e la tua organizzazione da tentativi di frode e attacchi BEC. L'attivazione di Microsoft Graph è invece basata sul tuo <strong>consenso esplicito</strong> (art. 6.1.a GDPR), revocabile in qualsiasi momento dalle impostazioni del plugin.</p>
@@ -236,7 +236,7 @@
 <p>When the plugin encounters a technical error (crash, unhandled exception, failure of calls to the backend or to Microsoft Graph), it automatically sends to <strong>Sentry</strong> a stack trace and some metadata so we can diagnose and fix it. See <a href="#error-monitoring-en">section 10</a> for full details. This feature is enabled by default but you can disable it from the plugin settings.</p>
 
 <h3>2.3 Data requested from Microsoft Graph (optional)</h3>
-<p>If you have enabled the "Full conversation reading" feature, the plugin asks Microsoft Graph for metadata of previous emails in the same thread (senders, CCs, subject, date). This data is processed only in your browser and never sent to our server.</p>
+<p>If you have enabled the "Full conversation reading" feature, the plugin asks Microsoft Graph for the metadata (senders, recipients, subject, date) of previous emails in the same thread and, once only upon activation, of recent emails in your mailbox, for the sole purpose of building the local memory of known senders. This data is processed only in your browser and never sent to our server.</p>
 
 <h2>3. Legal basis for processing</h2>
 <p>Processing of domain data is based on <strong>legitimate interest</strong> (art. 6.1.f GDPR): to protect you and your organization from fraud attempts and BEC attacks. Microsoft Graph activation is instead based on your <strong>explicit consent</strong> (art. 6.1.a GDPR), revocable at any time from the plugin settings.</p>
