@@ -49,6 +49,7 @@
     .status-dot.new{background:var(--blue)}
     .status-dot.warning{background:var(--warn)}
     .status-dot.danger{background:var(--danger)}
+    .status-dot.degraded{background:var(--warn);opacity:.55}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
     .scan-bar{height:2px;overflow:hidden;display:none;background:var(--surface)}
@@ -137,6 +138,7 @@
     .domain-list{display:flex;flex-direction:column;gap:6px}
     .domains-caution{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.5}
     .domains-caution.visible{display:block}
+    .domains-caution.degraded{color:#d4a847;border-top-color:#3d2800}
 
     .dcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;animation:fadeUp .25s ease forwards}
     @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -331,6 +333,7 @@
       <div class="section-label" data-i18n="sec_domains">Domini analizzati</div>
       <div class="domain-list" id="domain-list"></div>
       <div class="domains-caution" id="domains-caution" data-i18n="domains_caution">Nessuna anomalia su controlli automatici. Resta vigile sul contenuto del messaggio.</div>
+      <div class="domains-caution degraded" id="domains-degraded" data-i18n="degraded_notice">Analisi parziale: confronto domini eseguito localmente. Verifiche WHOIS, DNS e reputazione non disponibili (server non raggiungibile).</div>
     </div>
 
     <!-- Settings -->

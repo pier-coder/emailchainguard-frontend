@@ -87,8 +87,10 @@ const I18N = {
     'sec_domains':       'Domini analizzati',
     'domains_caution':   'Nessuna anomalia su controlli automatici. Resta vigile sul contenuto del messaggio.',
     'badge_ok':          'Analizzato',
+    'badge_partial':     'Parziale',
     'badge_warning':     'ATTENZIONE',
     'badge_danger':      'PERICOLO',
+    'degraded_notice':   'Analisi parziale: confronto domini eseguito localmente. Verifiche WHOIS, DNS e reputazione non disponibili (server non raggiungibile).',
     // Domain detail card (espansione al click)
     'detail_char_compare':   'Confronto carattere per carattere',
     'detail_legit':          'LEGIT',
@@ -185,8 +187,10 @@ const I18N = {
     'sec_domains':       'Analyzed domains',
     'domains_caution':   'No anomalies detected by automated checks. Always review the message content carefully.',
     'badge_ok':          'Analyzed',
+    'badge_partial':     'Partial',
     'badge_warning':     'WARNING',
     'badge_danger':      'DANGER',
+    'degraded_notice':   'Partial analysis: domain comparison performed locally. WHOIS, DNS and reputation checks unavailable (server unreachable).',
     // Domain detail card (espansione al click)
     'detail_char_compare':   'Character-by-character comparison',
     'detail_legit':          'LEGIT',
@@ -952,8 +956,17 @@ async function runScan() {
 
     let result = { overall_label: 'ok', suspect_count: 0, domains: [] };
     if (domains.length > 0) {
-      result = await callBackend(domains, convId);
-      if (!result || !Array.isArray(result.domains)) throw new Error('Risposta backend non valida');
+      // Backend non raggiungibile (timeout, rete, VPN/firewall che blocca
+      // *.onrender.com): NON abortire la scansione. Fallback su analisi locale
+      // (solo Levenshtein) e prosegui — i banner primo contatto / nuovo
+      // partecipante sono gia' calcolati localmente e vanno comunque mostrati.
+      try {
+        result = await callBackend(domains, convId);
+        if (!result || !Array.isArray(result.domains)) throw new Error('Risposta backend non valida');
+      } catch (backendErr) {
+        result = runLocalAnalysis(domains);
+        _track('degraded_mode_shown');
+      }
     }
 
     // Logica raffinata: in conversazione esistente, "Nuovo partecipante" prevale su "Primo contatto"
@@ -975,6 +988,92 @@ async function runScan() {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+//  DEGRADED MODE — analisi locale quando il backend non risponde
+//  Replica fedele di services/risk_score.py (backend). Se modifichi
+//  le soglie o la whitelist sul backend, aggiorna anche qui.
+// ────────────────────────────────────────────────────────────
+
+// Replica di GENERIC_DOMAINS in risk_score.py:8-17 — domini consumer
+// esclusi dal confronto Levenshtein (gmail vs hotmail non e' un attacco).
+const GENERIC_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com',
+  'outlook.com', 'hotmail.com', 'hotmail.it', 'live.com', 'live.it',
+  'yahoo.com', 'yahoo.it', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de',
+  'libero.it', 'virgilio.it', 'tin.it', 'alice.it',
+  'icloud.com', 'me.com', 'mac.com',
+  'protonmail.com', 'proton.me',
+  'tiscali.it', 'fastwebnet.it',
+  'pec.it', 'legalmail.it',
+]);
+
+// Replica di levenshtein() in risk_score.py:28-44 (DP a due righe).
+function localLevenshtein(a, b) {
+  if (a === b) return 0;
+  const la = a.length, lb = b.length;
+  if (la === 0) return lb;
+  if (lb === 0) return la;
+  let prev = Array.from({ length: lb + 1 }, (_, j) => j);
+  for (let i = 1; i <= la; i++) {
+    const curr = [i];
+    for (let j = 1; j <= lb; j++) {
+      curr.push(Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      ));
+    }
+    prev = curr;
+  }
+  return prev[lb];
+}
+
+// Replica di find_similar() in risk_score.py:47-69 — threshold 2.
+function findSimilarLocal(domain, allDomains) {
+  const THRESHOLD = 2;
+  if (GENERIC_DOMAINS.has(domain)) return null;
+  let bestMatch = null;
+  let bestDist = THRESHOLD + 1;
+  for (const other of allDomains) {
+    if (other === domain) continue;
+    if (GENERIC_DOMAINS.has(other)) continue;
+    const dist = localLevenshtein(domain, other);
+    if (dist > 0 && dist <= THRESHOLD && dist < bestDist) {
+      bestDist = dist;
+      bestMatch = other;
+    }
+  }
+  return bestMatch;
+}
+
+// Analisi locale dei soli confronti Levenshtein fra i domini dell'email.
+// Ritorna un risultato nello stesso formato di callBackend, ma con
+// degraded:true e senza whois/dns/reputation. Scoring coerente con
+// compute_risk_score() (risk_score.py:80-83,120-132): similar_to vale
+// +50 punti -> label 'danger', is_suspect true.
+function runLocalAnalysis(domains) {
+  const results = domains.map(domain => {
+    const similar = findSimilarLocal(domain, domains);
+    if (similar) {
+      return {
+        domain,
+        is_suspect: true,
+        risk_label: 'danger',
+        risk_score: 50,
+        similar_to: similar,
+      };
+    }
+    return { domain, is_suspect: false, risk_label: 'ok', risk_score: 0, similar_to: null };
+  });
+  const suspectCount = results.filter(r => r.is_suspect).length;
+  return {
+    overall_label: suspectCount > 0 ? 'danger' : 'ok',
+    suspect_count: suspectCount,
+    domains: results,
+    degraded: true,
+  };
+}
+
 async function callBackend(domains, conversationId) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CONFIG.FETCH_TIMEOUT_MS);
@@ -991,12 +1090,14 @@ async function callBackend(domains, conversationId) {
     }
     return resp.json();
   } catch (err) {
+    // degraded_mode: true perche' il chiamante (runScan) ripiega sempre
+    // sull'analisi locale quando questa funzione lancia.
     if (err.name === 'AbortError') {
       const timeoutErr = new Error('Analisi scaduta (15s)');
-      _captureException(timeoutErr, { phase: 'backend_analyze_timeout' });
+      _captureException(timeoutErr, { phase: 'backend_analyze_timeout', degraded_mode: true });
       throw timeoutErr;
     }
-    _captureException(err, { phase: 'backend_analyze_exception' });
+    _captureException(err, { phase: 'backend_analyze_exception', degraded_mode: true });
     throw err;
   } finally {
     clearTimeout(timer);
@@ -1008,13 +1109,15 @@ async function callBackend(domains, conversationId) {
 // ────────────────────────────────────────────────────────────
 function renderResults(data, newSenderEmail, newCCAddrs) {
   const { overall_label, domains } = data;
+  const degraded = data.degraded === true;
 
-  // Status dot
+  // Status dot. In modalita' degradata il fallback finale non e' il neutro
+  // "tutto ok" ma l'arancione tenue: non abbiamo fatto tutti i controlli.
   if (overall_label === 'danger')       setDot('danger');
   else if (overall_label === 'warning') setDot('warning');
   else if (newCCAddrs.length > 0)       setDot('warning');
   else if (newSenderEmail)              setDot('new');
-  else                                  setDot('');
+  else                                  setDot(degraded ? 'degraded' : '');
 
   let hasContent = false;
 
@@ -1054,18 +1157,22 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
     const list = document.getElementById('domain-list');
     list.replaceChildren();
     domains.forEach((d, i) => {
-      const card = buildDomainCard(d);
+      const card = buildDomainCard(d, degraded);
       card.style.animationDelay = `${i * 50}ms`;
       list.appendChild(card);
     });
     document.getElementById('domains').classList.add('visible');
-    // Riga cautelativa: visibile sse nessun dominio in lista e' suspect.
-    // Se anche solo uno e' ATTENZIONE/PERICOLO, l'utente ha gia' avvisi piu' forti.
+    // Riga cautelativa standard: visibile sse analisi COMPLETA e nessun suspect.
+    // In modalita' degradata non va mai mostrata ("Nessuna anomalia" sarebbe
+    // disonesto: WHOIS/DNS/reputazione non sono stati eseguiti) — al suo posto
+    // compare la notice degradata, sempre visibile finche' la lista e' mostrata.
     const cautionEl = document.getElementById('domains-caution');
     if (cautionEl) {
       const allClean = overall_label !== 'danger' && overall_label !== 'warning';
-      cautionEl.classList.toggle('visible', allClean);
+      cautionEl.classList.toggle('visible', !degraded && allClean);
     }
+    const degradedEl = document.getElementById('domains-degraded');
+    if (degradedEl) degradedEl.classList.toggle('visible', degraded);
     hasContent = true;
   }
 
@@ -1083,12 +1190,15 @@ function renderResults(data, newSenderEmail, newCCAddrs) {
   _currentScreen = 'analysis';
 }
 
-function buildDomainCard(d) {
+function buildDomainCard(d, degraded) {
   const cardClass = d.is_suspect
     ? (d.risk_label === 'danger' ? 'suspect' : 'warning-card') : 'safe';
+  // In modalita' degradata i domini "puliti" mostrano "Parziale", non
+  // "Analizzato": senza WHOIS/DNS/reputazione il controllo non e' completo.
+  // I badge di allarme (ATTENZIONE/PERICOLO) restano invariati.
   const badgeText = d.is_suspect
     ? (d.risk_label === 'danger' ? t('badge_danger') : t('badge_warning'))
-    : t('badge_ok');
+    : (degraded ? t('badge_partial') : t('badge_ok'));
   const scoreColor = d.risk_label === 'danger' ? 'var(--danger)'
     : d.risk_label === 'warning' ? 'var(--warn)' : 'var(--ok)';
 
